@@ -1,0 +1,3 @@
+cmd実行
+`❯ docker build -t cc_dev_env .`
+`❯ docker run -it --rm -v $PWD:/cc -w /cc cc_dev_env`
