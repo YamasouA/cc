@@ -11,6 +11,8 @@ static bool startswith(char *p, char *q) {
   return memcmp(p, q, strlen(q)) == 0;
 }
 
+
+
 static Token *new_token(TokenKind kind, Token *cur, char *str, int len) {
   Token *tok = calloc(1, sizeof(Token));
   tok->kind = kind;
@@ -85,8 +87,11 @@ Token *tokenize() {
     }
 
     if ('a' <= *p && *p <= 'z') {
-      cur = new_token(TK_IDENT, cur, p++, 1);
-      cur->len = 1;
+      cur = new_token(TK_IDENT, cur, p, 0);
+      char *q = p;
+      while (isalnum(*p))
+        p++;
+      cur->len = p - q;
       continue;
     }
 

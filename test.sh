@@ -46,7 +46,9 @@ assert 1 '1>=0;'
 assert 1 '1>=1;'
 assert 0 '1>=2;'
 
-assert 5 'a =5;'
+assert 5 'a=5;'
 assert 4 'a = 2; b = 4;'
+assert 6 'a = 2; b = a + 4;'
 
+assert 47 'foo=42; bar = foo + 5;'
 echo OK
