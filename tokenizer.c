@@ -1,6 +1,9 @@
 #include "9cc.h"
 
-static bool at_eof() {
+// 現在着目しているトークン
+Token *token;
+
+bool at_eof() {
   return token->kind == TK_EOF;
 }
 
@@ -25,6 +28,15 @@ bool consume(char *op) {
     return false;
   token = token->next;
   return true;
+}
+
+// 次のトークンが期待している記号の時はトークンを1つ読み進めてtrueを返す
+Token *consume_ident() {
+  if (token->kind != TK_IDENT)
+    return NULL;
+  Token *tmp = token;
+  token = token->next;
+  return tmp;
 }
 
 // 次のトークンが期待している記号の時はトークンを1つ読み進める
@@ -67,8 +79,14 @@ Token *tokenize() {
           continue;
     }
 
-    if (strchr("+-*/()<>", *p)) {
+    if (strchr("+-*/()<>=;", *p)) {
       cur = new_token(TK_RESERVED, cur, p++, 1);
+      continue;
+    }
+
+    if ('a' <= *p && *p <= 'z') {
+      cur = new_token(TK_IDENT, cur, p++, 1);
+      cur->len = 1;
       continue;
     }
 
@@ -84,5 +102,6 @@ Token *tokenize() {
   }
 
   new_token(TK_EOF, cur, p, 0);
+  token = head.next;
   return head.next;
 }
