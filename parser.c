@@ -68,6 +68,24 @@ static Node *stmt() {
     if (consume("else"))
       node->els = stmt();
       return node;
+  } else if (consume("for")) {
+      node = calloc(1, sizeof(Node));
+      node->kind = ND_FOR;
+      expect("(");
+      if (!consume(";")) {
+        node->init = expr();
+        expect(";");
+      }
+      if (!consume(";")) {
+        node->cond = expr();
+        expect(";");
+      }
+      if (!consume(")")) {
+        node->inc = expr();
+        expect(")");
+      }
+      node->then = stmt();
+      return node;
   } else if (consume("while")) {
       node = calloc(1, sizeof(Node));
       node->kind = ND_WHILE;
