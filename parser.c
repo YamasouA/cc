@@ -47,8 +47,17 @@ void program() {
 }
 
 // stmt = expr ";"
+//      | return expr ";"
 static Node *stmt() {
-  Node *node = expr();
+  Node *node;
+
+  if (consume("return")) {
+    node = calloc(1, sizeof(Node));
+    node->kind = ND_RETURN;
+    node->lhs = expr();
+  } else {
+    node = expr();
+  }
   expect(";");
   return node;
 }

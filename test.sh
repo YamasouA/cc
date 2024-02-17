@@ -51,4 +51,8 @@ assert 4 'a = 2; b = 4;'
 assert 6 'a = 2; b = a + 4;'
 
 assert 47 'foo=42; bar = foo + 5;'
+assert 0 'return 0;'
+assert 11 'return 10 + 1;'
+assert 1 'return 1 == 1;'
+assert 42 'a = 2; b=40; return a + b;'
 echo OK
