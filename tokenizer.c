@@ -68,6 +68,14 @@ int expect_number() {
   return val;
 }
 
+static bool is_keyword(char *s) {
+  return (strncmp(s, "return", 6) == 0 && !is_alnum(s[6])) ||
+        (strncmp(s, "if", 2) == 0 && !is_alnum(s[2])) ||
+        (strncmp(s, "else", 4) == 0 && !is_alnum(s[4]));
+        //(strncmp(s, "while", 5) == 0 && !is_alnum(s[5])) ||
+        //(strncmp(s, "for", 3) == 0 && !is_alnum(s[3]));
+}
+
 Token *tokenize() {
   char *p = user_input;
   Token head;
@@ -93,10 +101,12 @@ Token *tokenize() {
       continue;
     }
 
-    if (strncmp(p, "return", 6) == 0 && !is_alnum(p[6])) {
-      cur = new_token(TK_RESERVED, cur, p, 6);
-      cur->len = 6;
-      p += 6;
+    if (is_keyword(p)) {
+      cur = new_token(TK_RESERVED, cur, p, 0);
+      char *q = p;
+      while (is_alnum(*p))
+        p++;
+      cur->len = p - q;
       continue;
     }
 

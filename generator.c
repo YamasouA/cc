@@ -9,10 +9,14 @@ void gen_lval(Node *node) {
   printf("  push rax\n");
 }
 
+int labelseq = 0;
+
 void gen(Node *node) {
   switch (node->kind) {
     case ND_RETURN:
       gen(node->lhs);
+      printf("  pop rax\n");
+      printf("  jmp .Lreturn\n");
       return;
     case ND_NUM:
       printf("  push %d\n", node->val);
@@ -32,6 +36,27 @@ void gen(Node *node) {
       printf("  pop rax\n");
       printf("  mov [rax], rdi\n"); // 右辺を左辺値へ入れる
       printf("  push rdi\n");
+      return;
+    case ND_IF:
+      int seq = labelseq++;
+      if (node->els) {
+        gen(node->cond);
+        printf("  pop rax\n");
+        printf("  cmp rax, 0\n");
+        printf("  je  .Lelse%d\n", seq);
+        gen(node->then);
+        printf("  jmp .Lend%d\n", seq);
+        printf(".Lelse%d:\n", seq);
+        gen(node->els);
+        printf(".Lend%d:\n", seq);
+      } else {
+        gen(node->cond);
+        printf("  pop rax\n");
+        printf("  cmp rax, 0\n");
+        printf("  je  .Lend%d\n", seq);
+        gen(node->then);
+        printf(".Lend%d:\n", seq);
+      }
       return;
   }
 

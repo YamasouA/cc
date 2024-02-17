@@ -53,6 +53,7 @@ int main(int argc, char **argv) {
   }
 
   // 変数分の拡張していた領域を解放する
+  printf(".Lreturn :\n");
   printf("  mov rsp, rbp\n");
   printf("  pop rbp\n");
   // スタックトップに式全体の結果が入っている

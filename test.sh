@@ -55,4 +55,9 @@ assert 0 'return 0;'
 assert 11 'return 10 + 1;'
 assert 1 'return 1 == 1;'
 assert 42 'a = 2; b=40; return a + b;'
+
+assert 3 'if (0) return 2; return 3;'
+assert 3 'if (1-1) return 2; return 3;'
+assert 2 'if (1) return 2; return 3;'
+assert 2 'if (2-1) return 2; return 3;'
 echo OK
