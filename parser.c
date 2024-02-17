@@ -47,6 +47,7 @@ void program() {
 }
 
 // stmt = expr ";"
+//      | "{" stmt* "}"
 //      | return expr ";"
 //      | "if" "(" expr ")" stmt ("else" stmt)?
 //      | "while" "(" expr ")" stmt
@@ -58,6 +59,8 @@ static Node *stmt() {
     node = calloc(1, sizeof(Node));
     node->kind = ND_RETURN;
     node->lhs = expr();
+    expect(";");
+    return node;
   } else if (consume("if")) {
     node = calloc(1, sizeof(Node));
     node->kind = ND_IF;
@@ -94,9 +97,21 @@ static Node *stmt() {
       expect(")");
       node->then = stmt();
       return node;
-  } else {
-    node = expr();
   }
+  if (consume("{")) {
+    Node head;
+    head.next = NULL;
+    Node *cur = &head;
+    while (!consume("}")) {
+      cur->next = stmt();
+      cur = cur->next;
+    }
+    node = calloc(1, sizeof(Node));
+    node->kind = ND_BLOCK;
+    node->body = head.next;
+    return node;
+  }
+  node = expr();
   expect(";");
   return node;
 }

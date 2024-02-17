@@ -55,12 +55,14 @@ typedef enum {
   ND_IF, // if
   ND_FOR, // for
   ND_WHILE, // while
+  ND_BLOCK, // { ... }
 } NodeKind;
 
 typedef struct Node Node;
 
 struct Node {
   NodeKind kind; // ノードの型
+  Node *next;
   Node *lhs; // 左辺
   Node *rhs; // 右辺
 
@@ -70,11 +72,16 @@ struct Node {
   Node *els;
   Node *init;
   Node *inc;
+
+  // Block
+  Node *body;
+
   int val; // kindがND_NUMの時に使う
   int offset; // kindがND_LVARの場合のみ使う
 };
 
 extern Node *code[100];
+
 
 // 入力プログラム
 extern char *user_input;
