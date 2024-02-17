@@ -68,12 +68,22 @@ int expect_number() {
   return val;
 }
 
-static bool is_keyword(char *s) {
-  return (strncmp(s, "return", 6) == 0 && !is_alnum(s[6])) ||
-        (strncmp(s, "if", 2) == 0 && !is_alnum(s[2])) ||
-        (strncmp(s, "else", 4) == 0 && !is_alnum(s[4]));
-        //(strncmp(s, "while", 5) == 0 && !is_alnum(s[5])) ||
-        //(strncmp(s, "for", 3) == 0 && !is_alnum(s[3]));
+static char *starts_with_reserved(char *p) {
+  static char *kw[] = {"return", "if", "else"};
+
+  for (int i = 0; i < sizeof(kw) / sizeof(*kw); i++) {
+    int len = strlen(kw[i]);
+    if (startswith(p, kw[i]) && !is_alnum(p[len]))
+      return kw[i];
+  }
+
+  static char *ops[] = {"==", "!=", "<=", ">="};
+
+  for (int i = 0; i < sizeof(ops) / sizeof(*ops); i++) {
+    if (startswith(p, ops[i]))
+      return ops[i];
+  }
+  return NULL;
 }
 
 Token *tokenize() {
@@ -89,28 +99,21 @@ Token *tokenize() {
       continue;
     }
 
-    if (startswith(p, "==") || startswith(p, "!=")
-        || startswith(p, ">=") || startswith(p, "<=")) {
-          cur = new_token(TK_RESERVED, cur, p, 2);
-          p += 2;
-          continue;
+    char *kw = starts_with_reserved(p);
+    if (kw) {
+      int len = strlen(kw);
+      cur = new_token(TK_RESERVED, cur, p, len);
+      p += len;
+      continue;
     }
+
 
     if (strchr("+-*/()<>=;", *p)) {
       cur = new_token(TK_RESERVED, cur, p++, 1);
       continue;
     }
 
-    if (is_keyword(p)) {
-      cur = new_token(TK_RESERVED, cur, p, 0);
-      char *q = p;
-      while (is_alnum(*p))
-        p++;
-      cur->len = p - q;
-      continue;
-    }
-
-    if ('a' <= *p && *p <= 'z') {
+    if ('a' <= *p && *p <= 'z' || *p == '_') {
       cur = new_token(TK_IDENT, cur, p, 0);
       char *q = p;
       while (is_alnum(*p))
