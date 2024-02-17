@@ -37,7 +37,7 @@ void gen(Node *node) {
       printf("  mov [rax], rdi\n"); // 右辺を左辺値へ入れる
       printf("  push rdi\n");
       return;
-    case ND_IF:
+    case ND_IF: {
       int seq = labelseq++;
       if (node->els) {
         gen(node->cond);
@@ -58,6 +58,19 @@ void gen(Node *node) {
         printf(".Lend%d:\n", seq);
       }
       return;
+    }
+    case ND_WHILE: {
+      int seq = labelseq++;
+      printf(".Lbegin%d:\n", seq);
+      gen(node->cond);
+      printf("  pop rax\n");
+      printf("  cmp rax, 0\n");
+      printf("  je  .Lend%d\n", seq);
+      gen(node->then);
+      printf("  jmp .Lbegin%d\n", seq);
+      printf(".Lend%d:\n", seq);
+      return;
+    }
   }
 
   gen(node->lhs);
