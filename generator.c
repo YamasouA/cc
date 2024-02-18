@@ -10,6 +10,7 @@ void gen_lval(Node *node) {
 }
 
 int labelseq = 0;
+char *argreg[] = {"rdi", "rsi", "rdx", "rcx", "r8", "r9"};
 
 void gen(Node *node) {
   switch (node->kind) {
@@ -95,6 +96,16 @@ void gen(Node *node) {
       return;
     }
     case ND_FUNC: {
+      Node *cur = node->args;
+      int len = 0;
+      while (cur) {
+        gen(cur);
+        len++;
+        cur = cur->next;
+      }
+      for (int i = len - 1; i >= 0; i--) {
+        printf("  pop %s\n", argreg[i]);
+      }
       printf("  call %s\n", node->funcname);
       printf("  push rax\n");
       return;

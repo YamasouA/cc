@@ -195,7 +195,21 @@ static Node *unary() {
   return primary();
 }
 
-// primary = num | ident ("(" ")")? | "(" expr ")"
+// func-args = "(" (assign ("," assign)*)? ")"
+Node *func_args() {
+  if (consume(")"))
+    return NULL;
+  Node *head = assign();
+  Node *cur = head;
+  while (consume(",")) {
+    cur->next = assign();
+    cur = cur->next;
+  }
+  expect(")");
+  return head;
+}
+
+// primary = num | ident func-args? | "(" expr ")"
 static Node *primary() {
   if (consume("(")) {
     Node *node = expr();
@@ -206,12 +220,16 @@ static Node *primary() {
   Token *tok = consume_ident();
   if (tok) {
     Node *node = calloc(1, sizeof(Node));
+    // 関数処理
     if (consume("(")) {
-      expect(")");
+      //expect(")");
       node->kind = ND_FUNC;
       node->funcname = strndup(tok->str, tok->len);
+      node->args = func_args();
       return node;
     }
+
+    // 変数処理
     node->kind = ND_LVAR;
 
     LVar *lvar = find_lvar(tok);

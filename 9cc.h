@@ -80,6 +80,8 @@ struct Node {
 
   // 関数名
   char *funcname;
+  // argsは式として処理するのでNode型
+  Node *args;
 
   int val; // kindがND_NUMの時に使う
   int offset; // kindがND_LVARの場合のみ使う
