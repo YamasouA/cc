@@ -3,6 +3,16 @@
 // 入力プログラム
 char *user_input;
 
+int var_size() {
+  int len = 0;
+  LVar *tmp = locals;
+  while (tmp) {
+    tmp = tmp->next;
+    len++;
+  }
+  return len * 8;
+}
+
 // エラーを報告するための関数
 void error(char *fmt, ...) {
   va_list ap;
@@ -41,7 +51,7 @@ int main(int argc, char **argv) {
   // 変数26個分の領域を確保する
   printf("  push rbp\n");
   printf("  mov rbp, rsp\n");
-  printf("  sub rsp, 208\n");
+  printf("  sub rsp, %d\n", var_size(locals));
 
   // 先頭の式から順にコード生成
   for (int i = 0; code[i]; i++) {
