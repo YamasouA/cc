@@ -195,7 +195,7 @@ static Node *unary() {
   return primary();
 }
 
-// primary = num | ident | "(" expr ")"
+// primary = num | ident ("(" ")")? | "(" expr ")"
 static Node *primary() {
   if (consume("(")) {
     Node *node = expr();
@@ -206,6 +206,12 @@ static Node *primary() {
   Token *tok = consume_ident();
   if (tok) {
     Node *node = calloc(1, sizeof(Node));
+    if (consume("(")) {
+      expect(")");
+      node->kind = ND_FUNC;
+      node->funcname = strndup(tok->str, tok->len);
+      return node;
+    }
     node->kind = ND_LVAR;
 
     LVar *lvar = find_lvar(tok);

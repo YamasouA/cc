@@ -1,3 +1,4 @@
+#define __STDC_WANT_LIB_EXT2__ 1 // strndupがうまく呼べなかったので追加(https://stackoverflow.com/questions/46013382/c-strndup-implicit-declaration)
 #include <ctype.h>
 #include <stdarg.h>
 #include <stdbool.h>
@@ -56,6 +57,7 @@ typedef enum {
   ND_FOR, // for
   ND_WHILE, // while
   ND_BLOCK, // { ... }
+  ND_FUNC, // { ... }
 } NodeKind;
 
 typedef struct Node Node;
@@ -75,6 +77,9 @@ struct Node {
 
   // Block
   Node *body;
+
+  // 関数名
+  char *funcname;
 
   int val; // kindがND_NUMの時に使う
   int offset; // kindがND_LVARの場合のみ使う
