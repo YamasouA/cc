@@ -185,13 +185,17 @@ static Node *mul() {
   }
 }
 
-// unary = ("+" | "-")? unary
+// unary = ("+" | "-" | "*" | "&")? unary
 //        | primary
 static Node *unary() {
   if (consume("+"))
     return unary();
   if (consume("-"))
     return new_node(ND_SUB, new_node_num(0), unary());
+  if (consume("*"))
+    return new_node(ND_DEREF, unary(), NULL);
+  if (consume("&"))
+    return new_node(ND_ADDR, unary(), NULL);
   return primary();
 }
 
@@ -240,6 +244,7 @@ static Node *primary() {
       lvar->next = locals;
       lvar->name = tok->str;
       lvar->len = tok->len;
+      // chibiccではmainで最後の変数から順にoffsetを割り当てていく
       lvar->offset = locals? locals->offset + 8: 0;
       node->offset = lvar->offset;
       locals = lvar;

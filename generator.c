@@ -1,12 +1,20 @@
 #include "9cc.h"
 
+void gen(Node *node);
+
 // 左辺値の変数のアドレスを計算しスタックにプッシュする
 void gen_lval(Node *node) {
-  if (node->kind != ND_LVAR)
-    error("代入の左辺値が変数ではない");
-  printf("  mov rax, rbp\n");
-  printf("  sub rax, %d\n", node->offset);
-  printf("  push rax\n");
+  switch (node->kind) {
+  case ND_LVAR:
+    printf("  mov rax, rbp\n");
+    printf("  sub rax, %d\n", node->offset);
+    printf("  push rax\n");
+    return;
+  case ND_DEREF:
+    gen(node->lhs);
+    return;
+  }
+  error("代入の左辺値が変数ではない");
 }
 
 int labelseq = 0;
@@ -37,6 +45,15 @@ void gen(Node *node) {
       printf("  pop rax\n");
       printf("  mov [rax], rdi\n"); // 右辺を左辺値へ入れる
       printf("  push rdi\n");
+      return;
+    case ND_ADDR:
+      gen_lval(node->lhs);
+      return;
+    case ND_DEREF:
+      gen(node->lhs);
+      printf("  pop rax\n");
+      printf("  mov rax, [rax]\n");
+      printf("  push rax\n");
       return;
     case ND_IF: {
       int seq = labelseq++;

@@ -57,7 +57,9 @@ typedef enum {
   ND_FOR, // for
   ND_WHILE, // while
   ND_BLOCK, // { ... }
-  ND_FUNC, // { ... }
+  ND_FUNC, // 関数
+  ND_ADDR, // unary &
+  ND_DEREF, // unuary *
 } NodeKind;
 
 typedef struct Node Node;
