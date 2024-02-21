@@ -68,6 +68,16 @@ int expect_number() {
   return val;
 }
 
+// 次のトークンが変数の場合トークンを1つ読み進めてその変数名を返す
+// それ以外の場合にはエラーを報告する
+char *expect_ident() {
+  if (token->kind != TK_IDENT)
+    error_at(token->str, "識別子ではありません");
+  char *s = strndup(token->str, token->len);
+  token= token->next;
+  return s;
+}
+
 static char *starts_with_reserved(char *p) {
   static char *kw[] = {"return", "if", "else", "while", "for"};
 

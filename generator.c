@@ -18,6 +18,7 @@ void gen_lval(Node *node) {
 }
 
 int labelseq = 0;
+char *funcname;
 char *argreg[] = {"rdi", "rsi", "rdx", "rcx", "r8", "r9"};
 
 void gen(Node *node) {
@@ -25,7 +26,7 @@ void gen(Node *node) {
     case ND_RETURN:
       gen(node->lhs);
       printf("  pop rax\n");
-      printf("  jmp .Lreturn\n");
+      printf("  jmp .Lreturn.%s\n", funcname);
       return;
     case ND_NUM:
       printf("  push %d\n", node->val);
@@ -185,4 +186,28 @@ void gen(Node *node) {
   }
 
   printf("  push rax\n");
+}
+
+void codegen() {
+  printf(".intel_syntax noprefix\n");
+
+  for (Function *fn = code; fn; fn = fn->next) {
+    funcname = fn->name;
+    printf(".global %s\n", funcname);
+    printf("%s:\n", funcname);
+
+    printf("  push rbp\n");
+    printf("  mov rbp, rsp\n");
+    printf("  sub rsp, %d\n", fn->stack_size);
+
+    for (Node *node = fn->node; node; node = node->next)
+      gen(node);
+    printf("  pop rax\n");
+    // 変数分の拡張していた領域を解放する
+    printf(".Lreturn.%s:\n", fn->name);
+    printf("  mov rsp, rbp\n");
+    printf("  pop rbp\n");
+    // スタックトップに式全体の結果が入っている
+    printf("  ret\n");
+  }
 }

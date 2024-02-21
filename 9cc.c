@@ -3,16 +3,6 @@
 // 入力プログラム
 char *user_input;
 
-int var_size() {
-  int len = 0;
-  LVar *tmp = locals;
-  while (tmp) {
-    tmp = tmp->next;
-    len++;
-  }
-  return len * 8;
-}
-
 // エラーを報告するための関数
 void error(char *fmt, ...) {
   va_list ap;
@@ -36,6 +26,16 @@ void error_at(char *loc, char *fmt, ...) {
   exit(1);
 }
 
+int set_offset() {
+  for (Function *fn = code; fn; fn = fn->next) {
+    int offset = 0;
+    for (LVar *var = fn->locals; var; var = var->next) {
+      offset += 8;
+    }
+    fn->stack_size = offset;
+  }
+}
+
 int main(int argc, char **argv) {
   if (argc != 2)
       error("引数の個数が正しくありません");
@@ -44,29 +44,10 @@ int main(int argc, char **argv) {
   tokenize();
   program();
 
-  printf(".intel_syntax noprefix\n");
-  printf(".globl main\n");
-  printf("main:\n");
+  int offset = set_offset();
 
-  // 変数の領域を確保する
-  printf("  push rbp\n");
-  printf("  mov rbp, rsp\n");
-  printf("  sub rsp, %d\n", var_size(locals));
+  // コード生成
+  codegen();
 
-  // 先頭の式から順にコード生成
-  for (int i = 0; code[i]; i++) {
-    gen(code[i]);
-
-    // 式の評価結果がスタックに1つ値が残っている
-    // 最後のもの以外はいらない
-    printf("  pop rax\n");
-  }
-
-  // 変数分の拡張していた領域を解放する
-  printf(".Lreturn :\n");
-  printf("  mov rsp, rbp\n");
-  printf("  pop rbp\n");
-  // スタックトップに式全体の結果が入っている
-  printf("  ret\n");
   return 0;
 }

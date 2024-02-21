@@ -64,6 +64,7 @@ typedef enum {
 
 typedef struct Node Node;
 
+
 struct Node {
   NodeKind kind; // ノードの型
   Node *next;
@@ -89,8 +90,17 @@ struct Node {
   int offset; // kindがND_LVARの場合のみ使う
 };
 
-extern Node *code[100];
 
+typedef struct Function Function;
+struct Function {
+  Function *next;
+  char *name;
+  Node *node;
+  LVar *locals;
+  int stack_size;
+};
+
+extern Function *code;
 
 // 入力プログラム
 extern char *user_input;
@@ -100,6 +110,7 @@ extern char *user_input;
 bool consume(char *op);
 void expect(char *op);
 int expect_number();
+char *expect_ident();
 Token *consume_ident();
 Token *tokenize();
 bool at_eof();
@@ -108,7 +119,7 @@ bool at_eof();
 void program();
 
 // Generator
-void gen(Node *node);
+void codegen(); 
 
 // main
 void error(char *fmt, ...);

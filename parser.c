@@ -2,7 +2,7 @@
 
 LVar *locals;
 
-Node *code[100];
+Function *code;
 
 // 変数を名前で検索
 LVar *find_lvar(Token *tok) {
@@ -28,6 +28,7 @@ static Node *new_node_num(int val) {
   return node;
 }
 
+static Function *function();
 static Node *stmt();
 static Node *expr();
 static Node *assign();
@@ -38,12 +39,40 @@ static Node *mul();
 static Node *unary();
 static Node *primary();
 
-// program = stmt*
+// program = function*
 void program() {
-  int i = 0;
-  while (!at_eof())
-    code[i++] = stmt();
-  code[i++] = NULL;
+  Function head;
+  head.next == NULL;
+  Function *cur = &head;
+
+  while (!at_eof()) {
+    cur->next = function();
+    cur = cur->next;
+  }
+  code = head.next;
+}
+
+// functoin = ident "(" ")" "{" stmt* "}"
+Function *function() {
+  locals = NULL;
+  char *name = expect_ident();
+  expect("(");
+  expect(")");
+  expect("{");
+
+  Node head;
+  head.next = NULL;
+  Node *cur = &head;
+
+  while (!consume("}")) {
+    cur->next = stmt();
+    cur = cur->next;
+  }
+  Function *fn = calloc(1, sizeof(Function));
+  fn->name = name;
+  fn->node = head.next;
+  fn->locals = locals;
+  return fn;
 }
 
 // stmt = expr ";"
