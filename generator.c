@@ -200,6 +200,15 @@ void codegen() {
     printf("  mov rbp, rsp\n");
     printf("  sub rsp, %d\n", fn->stack_size);
 
+    // 関数の引数をスタックにpushする
+    int i = 0;
+    // 読み込んだ変数を格納する順番がcibiccと異なる
+    for (LVar *vl = fn->params; vl; vl=vl->next)
+      i++;
+    for (LVar *vl = fn->params; vl; vl = vl->next) {
+      printf("  mov [rbp-%d], %s\n", vl->offset, argreg[--i]);
+    }
+
     for (Node *node = fn->node; node; node = node->next)
       gen(node);
     printf("  pop rax\n");

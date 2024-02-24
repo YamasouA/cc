@@ -7,10 +7,23 @@ Function *code;
 // 変数を名前で検索
 LVar *find_lvar(Token *tok) {
   for (LVar *var = locals; var; var = var->next) {
-    if (var->len == tok->len && !memcmp(tok->str, var->name, var->len))
+    if (var->len == tok->len && !memcmp(tok->str, var->name, var->len)) {
       return var;
+    }
   }
   return NULL;
+}
+
+LVar *push_var(char *var_name) {
+  LVar *lvar = calloc(1, sizeof(LVar));
+  lvar->name = var_name;
+  lvar->len = strlen(var_name);
+  lvar->next = locals;
+  // chibiccではmainで最後の変数から順にoffsetを割り当てていく
+  lvar->offset = locals? locals->offset + 8: 8;
+  // 関数宣言の引数はnodeに値をセットしない
+  locals = lvar;
+  return lvar;
 }
 
 static Node *new_node(NodeKind kind, Node *lhs, Node *rhs) {
@@ -52,12 +65,29 @@ void program() {
   code = head.next;
 }
 
-// functoin = ident "(" ")" "{" stmt* "}"
+LVar *read_func_params() {
+  if (consume(")"))
+    return NULL;
+  
+  push_var(expect_ident());
+
+  while (!consume(")")) {
+    expect(",");
+    push_var(expect_ident());
+  }
+  LVar *head = locals;
+
+  return head;
+}
+
+// functoin = ident "(" params? ")" "{" stmt* "}"
+// params = ident ("," ident)*
 Function *function() {
   locals = NULL;
-  char *name = expect_ident();
+  Function *fn = calloc(1, sizeof(Function));
+  fn->name = expect_ident();
   expect("(");
-  expect(")");
+  fn->params = read_func_params();
   expect("{");
 
   Node head;
@@ -68,8 +98,6 @@ Function *function() {
     cur->next = stmt();
     cur = cur->next;
   }
-  Function *fn = calloc(1, sizeof(Function));
-  fn->name = name;
   fn->node = head.next;
   fn->locals = locals;
   return fn;
@@ -269,14 +297,8 @@ static Node *primary() {
     if (lvar) {
       node->offset = lvar->offset;
     } else {
-      lvar = calloc(1, sizeof(LVar));
-      lvar->next = locals;
-      lvar->name = tok->str;
-      lvar->len = tok->len;
-      // chibiccではmainで最後の変数から順にoffsetを割り当てていく
-      lvar->offset = locals? locals->offset + 8: 0;
+      lvar = push_var(strndup(tok->str, tok->len));
       node->offset = lvar->offset;
-      locals = lvar;
     }
     return node;
   }
