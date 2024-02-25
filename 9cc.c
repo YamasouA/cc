@@ -48,6 +48,8 @@ int main(int argc, char **argv) {
 
   // print_func();
 
+  add_type();
+
   // コード生成
   codegen();
 

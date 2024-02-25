@@ -142,6 +142,7 @@ void error_at(char *loc, char *fmt, ...);
 // Type
 Type *int_type();
 Type *pointer_to();
+void add_type(); 
 
 // Debug
 void print_ast();
