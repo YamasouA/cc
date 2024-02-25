@@ -5,6 +5,14 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <unistd.h>
+
+typedef struct Type Type;
+typedef enum { TY_INT } TypeKind;
+struct Type {
+  TypeKind kind;
+  Type *base;
+};
 
 typedef struct LVar LVar;
 
@@ -14,6 +22,7 @@ struct LVar {
   char *name; // 編数名
   int len; // 名前の長さ
   int offset; // RBPからのオフセット
+  Type *ty; // 型
 };
 
 // ローカル変数
@@ -60,6 +69,7 @@ typedef enum {
   ND_FUNC, // 関数
   ND_ADDR, // unary &
   ND_DEREF, // unuary *
+  ND_NULL, // 空の値
 } NodeKind;
 
 typedef struct Node Node;
@@ -67,6 +77,7 @@ typedef struct Node Node;
 
 struct Node {
   NodeKind kind; // ノードの型
+  Type *ty; // 型
   Node *next;
   Node *lhs; // 左辺
   Node *rhs; // 右辺
@@ -112,9 +123,11 @@ bool consume(char *op);
 void expect(char *op);
 int expect_number();
 char *expect_ident();
+char *expect_type();
 Token *consume_ident();
 Token *tokenize();
 bool at_eof();
+bool peek(char *op);
 
 // Parser
 void program();
@@ -125,3 +138,9 @@ void codegen();
 // main
 void error(char *fmt, ...);
 void error_at(char *loc, char *fmt, ...);
+
+// Type
+Type *int_type();
+
+// Debug
+void print_ast();

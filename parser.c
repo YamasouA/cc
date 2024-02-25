@@ -14,16 +14,24 @@ LVar *find_lvar(Token *tok) {
   return NULL;
 }
 
-LVar *push_var(char *var_name) {
+LVar *push_var(char *var_name, Type *ty) {
   LVar *lvar = calloc(1, sizeof(LVar));
   lvar->name = var_name;
   lvar->len = strlen(var_name);
   lvar->next = locals;
   // chibiccではmainで最後の変数から順にoffsetを割り当てていく
   lvar->offset = locals? locals->offset + 8: 8;
+  lvar->ty = ty;
   // 関数宣言の引数はnodeに値をセットしない
   locals = lvar;
   return lvar;
+}
+
+// basetype = "int"
+Type *basetype() {
+  expect("int");
+  Type *ty = int_type();
+  return ty;
 }
 
 static Node *new_node(NodeKind kind, Node *lhs, Node *rhs) {
@@ -69,22 +77,47 @@ LVar *read_func_params() {
   if (consume(")"))
     return NULL;
   
-  push_var(expect_ident());
+  Type *ty = basetype();
+  push_var(expect_ident(), ty);
 
   while (!consume(")")) {
     expect(",");
-    push_var(expect_ident());
+    ty = basetype();
+    push_var(expect_ident(), ty);
   }
   LVar *head = locals;
 
   return head;
 }
 
-// functoin = ident "(" params? ")" "{" stmt* "}"
-// params = ident ("," ident)*
+// declaration = basetype ident ("=" expr) ";"
+Node *declaration() {
+  Token *tok = token;
+  Type *ty = basetype();
+  LVar *var = push_var(expect_ident(), ty);
+
+  Node *node = calloc(1, sizeof(Node));
+  if (consume(";")) {
+    node->kind = ND_NULL;
+    node->offset = var->offset;
+    return  node;
+  }
+  expect("=");
+  node->kind = ND_ASSIGN;
+  node->lhs = calloc(1, sizeof(Node));
+  node->lhs->kind = ND_LVAR;
+  node->lhs->offset = var->offset;
+  node->rhs = expr();
+  expect(";");
+  return node;
+}
+
+// functoin = basetype ident "(" params? ")" "{" stmt* "}"
+// params = basetype ident ("," basetype ident)*
 Function *function() {
   locals = NULL;
   Function *fn = calloc(1, sizeof(Function));
+  basetype();
   fn->name = expect_ident();
   expect("(");
   fn->params = read_func_params();
@@ -109,6 +142,7 @@ Function *function() {
 //      | "if" "(" expr ")" stmt ("else" stmt)?
 //      | "while" "(" expr ")" stmt
 //      | "for" "(" expr? ";" expr? ";" expr? ")" stmt
+//      | declaration
 static Node *stmt() {
   Node *node;
 
@@ -168,6 +202,8 @@ static Node *stmt() {
     node->body = head.next;
     return node;
   }
+  if (peek("int"))
+    return declaration();
   node = expr();
   expect(";");
   return node;
@@ -270,7 +306,7 @@ Node *func_args() {
   return head;
 }
 
-// primary = num | ident func-args? | "(" expr ")"
+// primary = num | int ident func-args? | "(" expr ")"
 static Node *primary() {
   if (consume("(")) {
     Node *node = expr();
@@ -292,13 +328,11 @@ static Node *primary() {
 
     // 変数処理
     node->kind = ND_LVAR;
-
     LVar *lvar = find_lvar(tok);
     if (lvar) {
       node->offset = lvar->offset;
     } else {
-      lvar = push_var(strndup(tok->str, tok->len));
-      node->offset = lvar->offset;
+        error_at(tok->str, "宣言されていません");
     }
     return node;
   }

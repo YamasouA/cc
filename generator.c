@@ -31,6 +31,8 @@ void gen(Node *node) {
     case ND_NUM:
       printf("  push %d\n", node->val);
       return;
+    case ND_NULL:
+      return;
     case ND_LVAR:
       // raxに左辺値のアドレスをセットする
       gen_lval(node);

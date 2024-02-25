@@ -46,6 +46,8 @@ int main(int argc, char **argv) {
 
   set_offset();
 
+  // print_func();
+
   // コード生成
   codegen();
 

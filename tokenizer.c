@@ -39,6 +39,13 @@ bool consume(char *op) {
   return true;
 }
 
+bool peek(char *op) {
+  if  (strlen(op) != token->len ||
+    memcmp(token->str, op, token->len))
+    return false;
+  return true;
+}
+
 // 次のトークンが期待している記号の時はトークンを1つ読み進めてtrueを返す
 Token *consume_ident() {
   if (token->kind != TK_IDENT)
@@ -78,6 +85,14 @@ char *expect_ident() {
   return s;
 }
 
+char *expect_type() {
+  if (token->kind != TK_RESERVED)
+    return NULL;
+  char *s = strndup(token->str, token->len);
+  token = token->next;
+  return s;
+}
+
 static char *starts_with_reserved(char *p) {
   static char *kw[] = {"return", "if", "else", "while", "for"};
 
@@ -92,6 +107,12 @@ static char *starts_with_reserved(char *p) {
   for (int i = 0; i < sizeof(ops) / sizeof(*ops); i++) {
     if (startswith(p, ops[i]))
       return ops[i];
+  }
+
+  static char *types[] = {"int"};
+  for (int i = 0; i < sizeof(types) / sizeof(*types); i++) {
+    if (startswith(p, types[i]))
+      return types[i];
   }
   return NULL;
 }
