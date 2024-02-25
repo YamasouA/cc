@@ -8,7 +8,7 @@
 #include <unistd.h>
 
 typedef struct Type Type;
-typedef enum { TY_INT } TypeKind;
+typedef enum { TY_INT, TY_PTR } TypeKind;
 struct Type {
   TypeKind kind;
   Type *base;
@@ -141,6 +141,7 @@ void error_at(char *loc, char *fmt, ...);
 
 // Type
 Type *int_type();
+Type *pointer_to();
 
 // Debug
 void print_ast();

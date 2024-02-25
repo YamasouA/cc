@@ -31,6 +31,8 @@ LVar *push_var(char *var_name, Type *ty) {
 Type *basetype() {
   expect("int");
   Type *ty = int_type();
+  while (consume("*"))
+    ty = pointer_to(ty);
   return ty;
 }
 
