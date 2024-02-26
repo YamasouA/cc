@@ -208,11 +208,8 @@ void codegen() {
 
     // 関数の引数をスタックにpushする
     int i = 0;
-    // 読み込んだ変数を格納する順番がcibiccと異なる
-    for (LVar *vl = fn->params; vl; vl=vl->next)
-      i++;
-    for (LVar *vl = fn->params; vl; vl = vl->next) {
-      printf("  mov [rbp-%d], %s\n", vl->offset, argreg[--i]);
+    for (LVarList *vl = fn->params; vl; vl = vl->next) {
+      printf("  mov [rbp-%d], %s\n", vl->var->offset, argreg[i++]);
     }
 
     for (Node *node = fn->node; node; node = node->next)

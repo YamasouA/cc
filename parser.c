@@ -1,13 +1,14 @@
 #include "9cc.h"
 
-LVar *locals;
+LVarList *locals;
 
 Function *code;
 
 // 変数を名前で検索
 LVar *find_lvar(Token *tok) {
-  for (LVar *var = locals; var; var = var->next) {
-    if (var->len == tok->len && !memcmp(tok->str, var->name, var->len)) {
+  for (LVarList *vl = locals; vl; vl = vl->next) {
+    LVar *var = vl->var;
+    if (strlen(var->name) == tok->len && !memcmp(tok->str, var->name, tok->len)) {
       return var;
     }
   }
@@ -17,13 +18,13 @@ LVar *find_lvar(Token *tok) {
 LVar *push_var(char *var_name, Type *ty) {
   LVar *lvar = calloc(1, sizeof(LVar));
   lvar->name = var_name;
-  lvar->len = strlen(var_name);
-  lvar->next = locals;
   // chibiccではmainで最後の変数から順にoffsetを割り当てていく
-  lvar->offset = locals? locals->offset + 8: 8;
+  lvar->offset = locals? locals->var->offset + 8: 8;
   lvar->ty = ty;
-  // 関数宣言の引数はnodeに値をセットしない
-  locals = lvar;
+  LVarList *vl = calloc(1, sizeof(LVarList));
+  vl->var = lvar;
+  vl->next = locals;
+  locals = vl;
   return lvar;
 }
 
@@ -75,19 +76,22 @@ void program() {
   code = head.next;
 }
 
-LVar *read_func_params() {
+LVarList *read_func_params() {
   if (consume(")"))
     return NULL;
   
   Type *ty = basetype();
-  push_var(expect_ident(), ty);
+  LVarList *head = calloc(1, sizeof(LVarList));
+  head->var = push_var(expect_ident(), ty);
+  LVarList *cur = head;
 
   while (!consume(")")) {
     expect(",");
     ty = basetype();
-    push_var(expect_ident(), ty);
+    cur->next = calloc(1, sizeof(LVarList));
+    cur->next->var = push_var(expect_ident(), ty);
+    cur = cur->next;
   }
-  LVar *head = locals;
 
   return head;
 }
@@ -109,6 +113,7 @@ Node *declaration() {
   node->lhs = calloc(1, sizeof(Node));
   node->lhs->kind = ND_LVAR;
   node->lhs->offset = var->offset;
+  node->lhs->var = var;
   node->rhs = expr();
   expect(";");
   return node;
@@ -281,6 +286,7 @@ static Node *mul() {
 }
 
 // unary = ("+" | "-" | "*" | "&")? unary
+//        | "sizeof" unary
 //        | primary
 static Node *unary() {
   if (consume("+"))
@@ -291,6 +297,8 @@ static Node *unary() {
     return new_node(ND_DEREF, unary(), NULL);
   if (consume("&"))
     return new_node(ND_ADDR, unary(), NULL);
+  if (consume("sizeof"))
+    return new_node(ND_SIZEOF, unary(), NULL);
   return primary();
 }
 
@@ -308,7 +316,7 @@ Node *func_args() {
   return head;
 }
 
-// primary = num | int ident func-args? | "(" expr ")"
+// primary = num | ident func-args? | "(" expr ")"
 static Node *primary() {
   if (consume("(")) {
     Node *node = expr();
@@ -333,6 +341,7 @@ static Node *primary() {
     LVar *lvar = find_lvar(tok);
     if (lvar) {
       node->offset = lvar->offset;
+      node->var = lvar;
     } else {
         error_at(tok->str, "宣言されていません");
     }

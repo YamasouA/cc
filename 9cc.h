@@ -18,15 +18,19 @@ typedef struct LVar LVar;
 
 // ローカル変数の型
 struct LVar {
-  LVar *next; // 次の変数かNULL
   char *name; // 編数名
-  int len; // 名前の長さ
   int offset; // RBPからのオフセット
   Type *ty; // 型
 };
 
+typedef struct LVarList LVarList;
+struct LVarList {
+  LVar *var;
+  LVarList *next;
+};
+
 // ローカル変数
-extern LVar *locals;
+extern LVarList *locals;
 
 typedef enum {
   TK_RESERVED, // 記号
@@ -70,6 +74,7 @@ typedef enum {
   ND_ADDR, // unary &
   ND_DEREF, // unuary *
   ND_NULL, // 空の値
+  ND_SIZEOF, // "sizeof"
 } NodeKind;
 
 typedef struct Node Node;
@@ -97,6 +102,8 @@ struct Node {
   // argsは式として処理するのでNode型
   Node *args;
 
+  LVar *var;
+
   int val; // kindがND_NUMの時に使う
   int offset; // kindがND_LVARの場合のみ使う
 };
@@ -106,9 +113,9 @@ typedef struct Function Function;
 struct Function {
   Function *next;
   char *name;
-  LVar *params;
+  LVarList *params;
   Node *node;
-  LVar *locals;
+  LVarList *locals;
   int stack_size;
 };
 

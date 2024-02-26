@@ -13,6 +13,13 @@ Type *pointer_to(Type *base) {
   return ty;
 }
 
+int size_of(Type *ty) {
+  if (ty->kind == TY_INT)
+    return 4;
+  else if(ty->kind == TY_PTR)
+    return 8;
+}
+
 void visit(Node *node) {
   if (!node)
     return;
@@ -36,10 +43,12 @@ void visit(Node *node) {
     case ND_NE:
     case ND_LT:
     case ND_LE:
-    case ND_LVAR:
     case ND_FUNC:
     case ND_NUM:
       node->ty = int_type();
+      return;
+    case ND_LVAR:
+      node->ty = node->var->ty;
       return;
     case ND_ADD:
       if (node->rhs->ty->kind == TY_PTR) {
@@ -70,6 +79,12 @@ void visit(Node *node) {
         node->ty = node->lhs->ty->base;
       else
         node->ty = int_type();
+      return;
+    case ND_SIZEOF:
+      node->kind = ND_NUM;
+      node->ty = int_type();
+      node->val = size_of(node->lhs->ty);
+      node->lhs = NULL;
       return;
   }
 }
