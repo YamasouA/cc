@@ -18,7 +18,6 @@ LVar *find_lvar(Token *tok) {
 LVar *push_var(char *var_name, Type *ty) {
   LVar *lvar = calloc(1, sizeof(LVar));
   lvar->name = var_name;
-  // chibiccではmainで最後の変数から順にoffsetを割り当てていく
   lvar->offset = locals? locals->var->offset + 8: 8;
   lvar->ty = ty;
   LVarList *vl = calloc(1, sizeof(LVarList));
@@ -76,31 +75,45 @@ void program() {
   code = head.next;
 }
 
+Type *read_type_suffix(Type *base) {
+  if (!consume("["))
+    return base;
+  size_t n = expect_number();
+  expect("]");
+  return array_of(base, n);
+}
+
 LVarList *read_func_params() {
   if (consume(")"))
     return NULL;
   
   Type *ty = basetype();
+  char *name = expect_ident();
+  ty = read_type_suffix(ty);
   LVarList *head = calloc(1, sizeof(LVarList));
-  head->var = push_var(expect_ident(), ty);
+  head->var = push_var(name, ty);
   LVarList *cur = head;
 
   while (!consume(")")) {
     expect(",");
     ty = basetype();
+    char *name = expect_ident();
+    ty = read_type_suffix(ty);
     cur->next = calloc(1, sizeof(LVarList));
-    cur->next->var = push_var(expect_ident(), ty);
+    cur->next->var = push_var(name, ty);
     cur = cur->next;
   }
 
   return head;
 }
 
-// declaration = basetype ident ("=" expr) ";"
+// declaration = basetype ident ("[" num "]")* ("=" expr) ";"
 Node *declaration() {
   Token *tok = token;
   Type *ty = basetype();
-  LVar *var = push_var(expect_ident(), ty);
+  char *name = expect_ident();
+  ty = read_type_suffix(ty);
+  LVar *var = push_var(name, ty);
 
   Node *node = calloc(1, sizeof(Node));
   if (consume(";")) {

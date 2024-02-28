@@ -30,7 +30,8 @@ void set_offset() {
   for (Function *fn = code; fn; fn = fn->next) {
     int offset = 0;
     for (LVarList *vl = fn->locals; vl; vl = vl->next) {
-      offset += 8;
+      offset += size_of(vl->var->ty);
+      vl->var->offset = offset;
     }
     fn->stack_size = offset;
   }
@@ -44,9 +45,9 @@ int main(int argc, char **argv) {
   tokenize();
   program();
 
-  set_offset();
-
   add_type();
+
+  set_offset();
   
   // print_func();
 

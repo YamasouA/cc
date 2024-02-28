@@ -18,8 +18,6 @@ static bool is_alnum(char c) {
         (c == '_');
 }
 
-
-
 static Token *new_token(TokenKind kind, Token *cur, char *str, int len) {
   Token *tok = calloc(1, sizeof(Token));
   tok->kind = kind;
@@ -139,7 +137,7 @@ Token *tokenize() {
     }
 
 
-    if (strchr("+-*/()<>=;{},&", *p)) {
+    if (strchr("+-*/()<>=;{},&[]", *p)) {
       cur = new_token(TK_RESERVED, cur, p++, 1);
       continue;
     }

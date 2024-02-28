@@ -8,10 +8,11 @@
 #include <unistd.h>
 
 typedef struct Type Type;
-typedef enum { TY_INT, TY_PTR } TypeKind;
+typedef enum { TY_INT, TY_PTR, TY_ARRAY } TypeKind;
 struct Type {
   TypeKind kind;
   Type *base;
+  size_t array_size; // 配列の時のみ使う
 };
 
 typedef struct LVar LVar;
@@ -149,7 +150,9 @@ void error_at(char *loc, char *fmt, ...);
 // Type
 Type *int_type();
 Type *pointer_to();
+Type *array_of(Type *base, int size);
 void add_type(); 
+int size_of(Type *ty);
 
 // Debug
 void print_ast();

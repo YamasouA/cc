@@ -36,11 +36,15 @@ void gen(Node *node) {
     case ND_LVAR:
       // raxに左辺値のアドレスをセットする
       gen_lval(node);
+      if (node->ty->kind == TY_ARRAY)
+        return;
       printf("  pop rax\n");
       printf("  mov rax, [rax]\n"); // raxのアドレスの値をraxにセットする
       printf("  push rax\n");
       return;
     case ND_ASSIGN:
+      if (node->ty->kind == TY_ARRAY)
+        error("左辺値にポインタは使えない");
       gen_lval(node->lhs);
       gen(node->rhs);
 
@@ -48,11 +52,14 @@ void gen(Node *node) {
       printf("  pop rax\n");
       printf("  mov [rax], rdi\n"); // 右辺を左辺値へ入れる
       printf("  push rdi\n");
+      printf("  add rsp, 8\n");
       return;
     case ND_ADDR:
       gen_lval(node->lhs);
       return;
     case ND_DEREF:
+      if (node->ty->kind == TY_ARRAY)
+        return;
       gen(node->lhs);
       printf("  pop rax\n");
       printf("  mov rax, [rax]\n");
@@ -153,13 +160,13 @@ void gen(Node *node) {
 
   switch (node->kind) {
     case ND_ADD:
-      if (node->ty->kind == TY_PTR)
-        printf("  imul rdi, 8\n");
+      if (node->ty->base)
+        printf("  imul rdi, %d\n", size_of(node->ty->base));
       printf("  add rax, rdi\n");
       break;
     case ND_SUB:
-      if (node->ty->kind == TY_PTR)
-        printf("  imul rdi, 8\n");
+      if (node->ty->base)
+        printf("  imul rdi, %d\n", size_of(node->ty->base));
       printf("  sub rax, rdi\n");
       break;
     case ND_MUL:
@@ -208,8 +215,10 @@ void codegen() {
 
     // 関数の引数をスタックにpushする
     int i = 0;
+    for (LVarList *vl = fn->params; vl; vl=vl->next)
+      i++;
     for (LVarList *vl = fn->params; vl; vl = vl->next) {
-      printf("  mov [rbp-%d], %s\n", vl->var->offset, argreg[i++]);
+      printf("  mov [rbp-%d], %s\n", vl->var->offset, argreg[--i]);
     }
 
     for (Node *node = fn->node; node; node = node->next)
