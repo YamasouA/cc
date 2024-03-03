@@ -118,14 +118,12 @@ Node *declaration() {
   Node *node = calloc(1, sizeof(Node));
   if (consume(";")) {
     node->kind = ND_NULL;
-    node->offset = var->offset;
     return  node;
   }
   expect("=");
   node->kind = ND_ASSIGN;
   node->lhs = calloc(1, sizeof(Node));
   node->lhs->kind = ND_LVAR;
-  node->lhs->offset = var->offset;
   node->lhs->var = var;
   node->rhs = expr();
   expect(";");
@@ -353,7 +351,6 @@ static Node *primary() {
     node->kind = ND_LVAR;
     LVar *lvar = find_lvar(tok);
     if (lvar) {
-      node->offset = lvar->offset;
       node->var = lvar;
     } else {
         error_at(tok->str, "宣言されていません");

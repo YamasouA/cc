@@ -106,7 +106,6 @@ struct Node {
   LVar *var;
 
   int val; // kindがND_NUMの時に使う
-  int offset; // kindがND_LVARの場合のみ使う
 };
 
 
