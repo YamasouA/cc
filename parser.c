@@ -60,6 +60,7 @@ static Node *relational();
 static Node *add();
 static Node *mul();
 static Node *unary();
+static Node *postfix();
 static Node *primary();
 
 // program = function*
@@ -299,7 +300,7 @@ static Node *mul() {
 
 // unary = ("+" | "-" | "*" | "&")? unary
 //        | "sizeof" unary
-//        | primary
+//        | postfix
 static Node *unary() {
   if (consume("+"))
     return unary();
@@ -311,7 +312,20 @@ static Node *unary() {
     return new_node(ND_ADDR, unary(), NULL);
   if (consume("sizeof"))
     return new_node(ND_SIZEOF, unary(), NULL);
-  return primary();
+  return postfix();
+}
+
+// postfix = primary ("[" expr "]")*
+Node *postfix() {
+  Node *node = primary();
+
+  while(consume("[")) {
+    // x[y] == *(x+y)
+    node = new_node(ND_ADD, node, expr());
+    expect("]");
+    node = new_node(ND_DEREF, node, NULL);
+  }
+  return node;
 }
 
 // func-args = "(" (assign ("," assign)*)? ")"
