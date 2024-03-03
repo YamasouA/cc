@@ -80,6 +80,7 @@ Type *read_type_suffix(Type *base) {
     return base;
   size_t n = expect_number();
   expect("]");
+  base = read_type_suffix(base);
   return array_of(base, n);
 }
 
