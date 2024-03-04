@@ -6,9 +6,10 @@
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
+#include <assert.h>
 
 typedef struct Type Type;
-typedef enum { TY_INT, TY_PTR, TY_ARRAY } TypeKind;
+typedef enum { TY_INT, TY_PTR, TY_ARRAY, TY_CHAR } TypeKind;
 struct Type {
   TypeKind kind;
   Type *base;
@@ -155,10 +156,8 @@ void error_at(char *loc, char *fmt, ...);
 
 // Type
 Type *int_type();
+Type *char_type();
 Type *pointer_to();
 Type *array_of(Type *base, int size);
 void add_type(); 
 int size_of(Type *ty);
-
-// Debug
-void print_ast();

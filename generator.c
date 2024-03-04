@@ -23,7 +23,9 @@ void gen_lval(Node *node) {
 
 int labelseq = 0;
 char *funcname;
-char *argreg[] = {"rdi", "rsi", "rdx", "rcx", "r8", "r9"};
+// charのような1バイトでは上位のビットが0にリセットされない
+char *argreg1[] = {"dil", "sil", "dl", "cl", "r8b", "r9b"};
+char *argreg8[] = {"rdi", "rsi", "rdx", "rcx", "r8", "r9"};
 
 void gen(Node *node) {
   switch (node->kind) {
@@ -44,7 +46,10 @@ void gen(Node *node) {
       if (node->ty->kind == TY_ARRAY)
         return;
       printf("  pop rax\n");
-      printf("  mov rax, [rax]\n"); // raxのアドレスの値をraxにセットする
+      if (size_of(node->ty) == 1)
+        printf("  movsx rax, byte ptr [rax]\n"); // raxのアドレスの値をraxにセットする
+      else
+        printf("  mov rax, [rax]\n"); // raxのアドレスの値をraxにセットする
       printf("  push rax\n");
       return;
     case ND_ASSIGN:
@@ -55,7 +60,10 @@ void gen(Node *node) {
 
       printf("  pop rdi\n"); // 右辺値がstackのtopに入る
       printf("  pop rax\n");
-      printf("  mov [rax], rdi\n"); // 右辺を左辺値へ入れる
+      if (size_of(node->ty) == 1)
+        printf("  mov [rax], dil\n"); // 右辺を左辺値へ入れる
+      else
+        printf("  mov [rax], rdi\n"); // 右辺を左辺値へ入れる
       printf("  push rdi\n");
       return;
     case ND_ADDR:
@@ -66,7 +74,10 @@ void gen(Node *node) {
       if (node->ty->kind == TY_ARRAY)
         return;
       printf("  pop rax\n");
-      printf("  mov rax, [rax]\n");
+      if (size_of(node->ty) == 1)
+        printf("  movsx rax, byte ptr [rax]\n"); // raxのアドレスの値をraxにセットする
+      else
+        printf("  mov rax, [rax]\n"); // raxのアドレスの値をraxにセットする
       printf("  push rax\n");
       return;
     case ND_IF: {
@@ -135,7 +146,7 @@ void gen(Node *node) {
         cur = cur->next;
       }
       for (int i = len - 1; i >= 0; i--) {
-        printf("  pop %s\n", argreg[i]);
+        printf("  pop %s\n", argreg8[i]);
       }
       // 関数呼び出し時にRSPは16の倍数にアラインされる必要があるa
       int seq = labelseq++;
@@ -219,11 +230,18 @@ void emit_text() {
     // 関数の引数をスタックにpushする
     int i = 0;
     for (LVarList *vl = fn->params; vl; vl = vl->next) {
-      printf("  mov [rbp-%d], %s\n", vl->var->offset, argreg[i++]);
+      int size = size_of(vl->var->ty);
+      if (size == 1) {
+        printf("  mov [rbp-%d], %s\n", vl->var->offset, argreg1[i++]);
+      } else {
+        assert(size == 8);
+        printf("  mov [rbp-%d], %s\n", vl->var->offset, argreg8[i++]);
+      }
     }
 
     for (Node *node = fn->node; node; node = node->next)
       gen(node);
+    printf("  pop rax\n");
     // 変数分の拡張していた領域を解放する
     printf(".Lreturn.%s:\n", fn->name);
     printf("  mov rsp, rbp\n");

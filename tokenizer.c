@@ -107,7 +107,7 @@ static char *starts_with_reserved(char *p) {
       return ops[i];
   }
 
-  static char *types[] = {"int"};
+  static char *types[] = {"int", "char"};
   for (int i = 0; i < sizeof(types) / sizeof(*types); i++) {
     if (startswith(p, types[i]))
       return types[i];

@@ -41,10 +41,16 @@ LVar *push_var(char *var_name, Type *ty, bool is_local) {
   return lvar;
 }
 
-// basetype = "int"
+// basetype = ("char" | "int") "*"*
 Type *basetype() {
-  expect("int");
-  Type *ty = int_type();
+  Type *ty; 
+  if (consume("int")) {
+    ty = int_type();
+  } else if (consume("char")) {
+    ty = char_type();
+  } else {
+    error_at(token->str, "type error");
+  }
   while (consume("*"))
     ty = pointer_to(ty);
   return ty;
@@ -56,6 +62,10 @@ bool is_function() {
   bool is_func = consume_ident() && consume("(");
   token = tok;
   return is_func;
+}
+
+bool is_type() {
+  return peek("int") || peek("char");
 }
 
 static Node *new_node(NodeKind kind, Node *lhs, Node *rhs) {
@@ -263,7 +273,7 @@ static Node *stmt() {
     node->body = head.next;
     return node;
   }
-  if (peek("int"))
+  if (is_type())
     return declaration();
   node = expr();
   expect(";");
