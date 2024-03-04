@@ -6,9 +6,13 @@ void gen(Node *node);
 void gen_lval(Node *node) {
   switch (node->kind) {
   case ND_LVAR:
-    printf("  mov rax, rbp\n");
-    printf("  sub rax, %d\n", node->var->offset);
-    printf("  push rax\n");
+    if (node->var->is_local) {
+      printf("  mov rax, rbp\n");
+      printf("  sub rax, %d\n", node->var->offset);
+      printf("  push rax\n");
+    } else {
+      printf("  push offset %s\n", node->var->name);
+    }
     return;
   case ND_DEREF:
     gen(node->lhs);
@@ -201,10 +205,9 @@ void gen(Node *node) {
   printf("  push rax\n");
 }
 
-void codegen() {
-  printf(".intel_syntax noprefix\n");
-
-  for (Function *fn = code; fn; fn = fn->next) {
+void emit_text() {
+  printf(".text\n");
+  for (Function *fn = code->fns; fn; fn = fn->next) {
     funcname = fn->name;
     printf(".global %s\n", funcname);
     printf("%s:\n", funcname);
@@ -221,7 +224,6 @@ void codegen() {
 
     for (Node *node = fn->node; node; node = node->next)
       gen(node);
-    printf("  pop rax\n");
     // 変数分の拡張していた領域を解放する
     printf(".Lreturn.%s:\n", fn->name);
     printf("  mov rsp, rbp\n");
@@ -229,4 +231,24 @@ void codegen() {
     // スタックトップに式全体の結果が入っている
     printf("  ret\n");
   }
+}
+
+// global変数
+// x:
+//   .zero 4
+// 的なやつ
+void emit_data() {
+  printf(".data\n");
+
+  for (LVarList *vl = code->globals; vl; vl = vl->next) {
+    LVar *var = vl->var;
+    printf("%s:\n", var->name);
+    printf("  .zero %d\n", size_of(var->ty));
+  }
+}
+
+void codegen() {
+  printf(".intel_syntax noprefix\n");
+  emit_data();
+  emit_text();
 }

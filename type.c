@@ -100,7 +100,7 @@ void visit(Node *node) {
 }
 
 void add_type() {
-  for (Function *fn = code; fn; fn = fn->next) {
+  for (Function *fn = code->fns; fn; fn = fn->next) {
     for (Node *node = fn->node; node; node = node->next) {
       visit(node);
     }

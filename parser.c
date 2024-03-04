@@ -1,8 +1,9 @@
 #include "9cc.h"
 
 LVarList *locals;
+LVarList *globals;
 
-Function *code;
+Program *code;
 
 // 変数を名前で検索
 LVar *find_lvar(Token *tok) {
@@ -12,18 +13,31 @@ LVar *find_lvar(Token *tok) {
       return var;
     }
   }
+  for (LVarList *vl = globals; vl; vl = vl->next) {
+    LVar *var = vl->var;
+    if (strlen(var->name) == tok->len && !memcmp(tok->str, var->name, tok->len)) {
+      return var;
+    }
+  }
   return NULL;
 }
 
-LVar *push_var(char *var_name, Type *ty) {
+LVar *push_var(char *var_name, Type *ty, bool is_local) {
   LVar *lvar = calloc(1, sizeof(LVar));
   lvar->name = var_name;
   lvar->offset = locals? locals->var->offset + 8: 8;
   lvar->ty = ty;
+  lvar->is_local = is_local;
   LVarList *vl = calloc(1, sizeof(LVarList));
   vl->var = lvar;
-  vl->next = locals;
-  locals = vl;
+  if (is_local) {
+    vl->next = locals;
+    locals = vl;
+  } else {
+    vl->next = globals;
+    globals = vl;
+  }
+
   return lvar;
 }
 
@@ -34,6 +48,14 @@ Type *basetype() {
   while (consume("*"))
     ty = pointer_to(ty);
   return ty;
+}
+
+bool is_function() {
+  Token *tok = token;
+  basetype();
+  bool is_func = consume_ident() && consume("(");
+  token = tok;
+  return is_func;
 }
 
 static Node *new_node(NodeKind kind, Node *lhs, Node *rhs) {
@@ -52,6 +74,7 @@ static Node *new_node_num(int val) {
 }
 
 static Function *function();
+void global_var();
 static Node *stmt();
 static Node *expr();
 static Node *assign();
@@ -68,12 +91,21 @@ void program() {
   Function head;
   head.next == NULL;
   Function *cur = &head;
+  globals = NULL;
 
   while (!at_eof()) {
-    cur->next = function();
-    cur = cur->next;
+    if (is_function()) {
+      cur->next = function();
+      cur = cur->next;
+    } else {
+      global_var();
+    }
   }
-  code = head.next;
+  
+  Program *prog = calloc(1, sizeof(Program)); 
+  prog->fns = head.next;
+  prog->globals = globals;
+  code = prog;
 }
 
 Type *read_type_suffix(Type *base) {
@@ -93,7 +125,7 @@ LVarList *read_func_params() {
   char *name = expect_ident();
   ty = read_type_suffix(ty);
   LVarList *head = calloc(1, sizeof(LVarList));
-  head->var = push_var(name, ty);
+  head->var = push_var(name, ty, true);
   LVarList *cur = head;
 
   while (!consume(")")) {
@@ -102,11 +134,20 @@ LVarList *read_func_params() {
     char *name = expect_ident();
     ty = read_type_suffix(ty);
     cur->next = calloc(1, sizeof(LVarList));
-    cur->next->var = push_var(name, ty);
+    cur->next->var = push_var(name, ty, true);
     cur = cur->next;
   }
 
   return head;
+}
+
+// global-var = basetype ident ("[" num "]")* ";"
+void global_var() {
+  Type *ty = basetype();
+  char *name = expect_ident();
+  ty = read_type_suffix(ty);
+  expect(";");
+  push_var(name, ty, false);
 }
 
 // declaration = basetype ident ("[" num "]")* ("=" expr) ";"
@@ -115,7 +156,7 @@ Node *declaration() {
   Type *ty = basetype();
   char *name = expect_ident();
   ty = read_type_suffix(ty);
-  LVar *var = push_var(name, ty);
+  LVar *var = push_var(name, ty, true);
 
   Node *node = calloc(1, sizeof(Node));
   if (consume(";")) {

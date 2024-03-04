@@ -27,7 +27,7 @@ void error_at(char *loc, char *fmt, ...) {
 }
 
 void set_offset() {
-  for (Function *fn = code; fn; fn = fn->next) {
+  for (Function *fn = code->fns; fn; fn = fn->next) {
     int offset = 0;
     for (LVarList *vl = fn->locals; vl; vl = vl->next) {
       offset += size_of(vl->var->ty);
@@ -49,8 +49,6 @@ int main(int argc, char **argv) {
 
   set_offset();
   
-  // print_func();
-
   // コード生成
   codegen();
 

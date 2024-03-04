@@ -17,11 +17,12 @@ struct Type {
 
 typedef struct LVar LVar;
 
-// ローカル変数の型
+// 変数の型
 struct LVar {
   char *name; // 編数名
-  int offset; // RBPからのオフセット
+  int offset; // RBPからのオフセット (localの時に使う)
   Type *ty; // 型
+  bool is_local; // local or global
 };
 
 typedef struct LVarList LVarList;
@@ -119,7 +120,13 @@ struct Function {
   int stack_size;
 };
 
-extern Function *code;
+typedef struct {
+  LVarList *globals;
+  Function *fns;
+} Program;
+
+extern Program *code;
+extern LVarList *globals;
 
 // 入力プログラム
 extern char *user_input;
