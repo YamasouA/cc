@@ -136,6 +136,19 @@ Token *tokenize() {
       continue;
     }
 
+    if (*p == '"') {
+      char *tmp = ++p;
+
+      while (*p && *p != '"') {
+        p++;
+      }
+      if (!*p)
+        error_at(tmp, "\"が閉じられていない");
+      cur = new_token(TK_STR, cur, tmp, p - tmp);
+      p++;
+      continue;
+    }
+
 
     if (strchr("+-*/()<>=;{},&[]", *p)) {
       cur = new_token(TK_RESERVED, cur, p++, 1);

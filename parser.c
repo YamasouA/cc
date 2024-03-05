@@ -41,6 +41,14 @@ LVar *push_var(char *var_name, Type *ty, bool is_local) {
   return lvar;
 }
 
+char *create_varname() {
+  static int cnt = 0;
+  char buf[20];
+
+  sprintf(buf, ".LC%d", cnt++);
+  return strndup(buf, 20);
+}
+
 // basetype = ("char" | "int") "*"*
 Type *basetype() {
   Type *ty; 
@@ -393,7 +401,7 @@ Node *func_args() {
   return head;
 }
 
-// primary = num | ident func-args? | "(" expr ")"
+// primary = num | ident func-args? | "(" expr ")" | str
 static Node *primary() {
   if (consume("(")) {
     Node *node = expr();
@@ -421,6 +429,19 @@ static Node *primary() {
     } else {
         error_at(tok->str, "宣言されていません");
     }
+    return node;
+  }
+
+  if (token->kind == TK_STR) {
+    // + 1 \0の分
+    Type *ty = array_of(char_type(), token->len + 1);
+    LVar *var = push_var(create_varname(), ty, false);
+    var->contents = strndup(token->str, token->len);
+    var->cont_len = token->len;
+    Node *node = calloc(1, sizeof(Node));
+    node->kind = ND_LVAR;
+    node->var = var;
+    token = token->next;
     return node;
   }
 

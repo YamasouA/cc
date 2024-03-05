@@ -261,7 +261,12 @@ void emit_data() {
   for (LVarList *vl = code->globals; vl; vl = vl->next) {
     LVar *var = vl->var;
     printf("%s:\n", var->name);
-    printf("  .zero %d\n", size_of(var->ty));
+    if (!var->contents) {
+      printf("  .zero %d\n", size_of(var->ty));
+    } else {
+      printf("  .string \"%s\"\n", var->contents);
+    }
+    
   }
 }
 

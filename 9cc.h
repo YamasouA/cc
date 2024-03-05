@@ -24,6 +24,9 @@ struct LVar {
   int offset; // RBPからのオフセット (localの時に使う)
   Type *ty; // 型
   bool is_local; // local or global
+
+  char *contents;
+  int cont_len;
 };
 
 typedef struct LVarList LVarList;
@@ -39,6 +42,7 @@ typedef enum {
   TK_RESERVED, // 記号
   TK_IDENT, // 識別子
   TK_NUM, // 整数トークン
+  TK_STR, // 文字列トークン
   TK_EOF, // 入力終わりのトークン
 } TokenKind;
 
