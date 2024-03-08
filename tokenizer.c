@@ -172,6 +172,23 @@ Token *tokenize() {
       continue;
     }
 
+    // Skip line comments.
+    if (startswith(p, "//")) {
+      p += 2;
+      while (*p != '\n')
+        p++;
+      continue;
+    }
+
+    // Skip block comments.
+    if (startswith(p, "/*")) {
+      char *q = strstr(p + 2, "*/");
+      if (!q)
+        error_at(p, "unclosed block comment");
+      p = q + 2;
+      continue;
+    }
+
     char *kw = starts_with_reserved(p);
     if (kw) {
       int len = strlen(kw);
