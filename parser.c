@@ -2,18 +2,13 @@
 
 LVarList *locals;
 LVarList *globals;
+LVarList *scope;
 
 Program *code;
 
 // 変数を名前で検索
 LVar *find_lvar(Token *tok) {
-  for (LVarList *vl = locals; vl; vl = vl->next) {
-    LVar *var = vl->var;
-    if (strlen(var->name) == tok->len && !memcmp(tok->str, var->name, tok->len)) {
-      return var;
-    }
-  }
-  for (LVarList *vl = globals; vl; vl = vl->next) {
+  for (LVarList *vl = scope; vl; vl = vl->next) {
     LVar *var = vl->var;
     if (strlen(var->name) == tok->len && !memcmp(tok->str, var->name, tok->len)) {
       return var;
@@ -37,6 +32,11 @@ LVar *push_var(char *var_name, Type *ty, bool is_local) {
     vl->next = globals;
     globals = vl;
   }
+
+  LVarList *sc = calloc(1, sizeof(LVarList));
+  sc->var = lvar;
+  sc->next = scope;
+  scope = sc;
 
   return lvar;
 }
@@ -272,10 +272,12 @@ static Node *stmt() {
     Node head;
     head.next = NULL;
     Node *cur = &head;
+    LVarList *sc = scope; // ブロックに入るまでの情報を保持してブロック間の変数を一気に削除できる
     while (!consume("}")) {
       cur->next = stmt();
       cur = cur->next;
     }
+    scope = sc;
     node = calloc(1, sizeof(Node));
     node->kind = ND_BLOCK;
     node->body = head.next;
