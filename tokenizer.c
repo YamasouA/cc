@@ -2,6 +2,7 @@
 
 // 現在着目しているトークン
 Token *token;
+char *filename;
 
 bool at_eof() {
   return token->kind == TK_EOF;
@@ -91,6 +92,49 @@ char *expect_type() {
   return s;
 }
 
+unsigned int escape_char(char c) {
+  switch (c) {
+    case 'a': return '\a';
+    case 'b': return '\b';
+    case 't': return '\t';
+    case 'n': return '\n';
+    case 'v': return '\v';
+    case 'f': return '\f';
+    case 'r': return '\r';
+    case 'e': return 27;
+    case '0': return 0;
+    default: return c;
+  }
+}
+
+Token *read_string_literal(Token *cur, char **start) {
+  char *p = *start + 1;
+  char buf[1024];
+  int len = 0;
+
+  while (1) {
+    if (len == sizeof(buf))
+      error_at(*start, "文字列が長すぎます");
+    if (*p == '\0')
+      error_at(*start, "文字列リテラルが閉じられていません");
+    if (*p == '"') {
+      p++;
+      break;
+    }
+
+    if (*p == '\\') {
+      p++;
+      buf[len++] = escape_char(*p++);
+    } else {
+      buf[len++] = *p++;
+    }
+  }
+
+  Token *tok = new_token(TK_STR, cur, strdup(buf), strlen(buf));
+  *start = p;
+  return tok;
+}
+
 static char *starts_with_reserved(char *p) {
   static char *kw[] = {"return", "if", "else", "while", "for", "sizeof"};
 
@@ -137,15 +181,7 @@ Token *tokenize() {
     }
 
     if (*p == '"') {
-      char *tmp = ++p;
-
-      while (*p && *p != '"') {
-        p++;
-      }
-      if (!*p)
-        error_at(tmp, "\"が閉じられていない");
-      cur = new_token(TK_STR, cur, tmp, p - tmp);
-      p++;
+      cur = read_string_literal(cur, &p);
       continue;
     }
 

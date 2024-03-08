@@ -7,6 +7,7 @@
 #include <string.h>
 #include <unistd.h>
 #include <assert.h>
+#include <errno.h>
 
 typedef struct Type Type;
 typedef enum { TY_INT, TY_PTR, TY_ARRAY, TY_CHAR } TypeKind;
@@ -134,6 +135,7 @@ extern Program *code;
 extern LVarList *globals;
 
 // 入力プログラム
+extern char *filename;
 extern char *user_input;
 
 
