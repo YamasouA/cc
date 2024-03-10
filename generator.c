@@ -17,6 +17,12 @@ void gen_lval(Node *node) {
   case ND_DEREF:
     gen(node->lhs);
     return;
+  case ND_MEMBER:
+    gen_lval(node->lhs);
+    printf("  pop rax\n");
+    printf("  add rax, %d\n", node->member->offset);
+    printf("  push rax\n");
+    return;
   }
   error("代入の左辺値が変数ではない");
 }
@@ -44,6 +50,7 @@ void gen(Node *node) {
     case ND_NULL:
       return;
     case ND_LVAR:
+    case ND_MEMBER:
       // raxに左辺値のアドレスをセットする
       gen_lval(node);
       // 配列ではアドレスが知れればいいので早期リターン

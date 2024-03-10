@@ -10,11 +10,28 @@
 #include <errno.h>
 
 typedef struct Type Type;
-typedef enum { TY_INT, TY_PTR, TY_ARRAY, TY_CHAR } TypeKind;
+typedef struct Member Member;
+
+typedef enum {
+  TY_INT,
+  TY_PTR,
+  TY_ARRAY,
+  TY_CHAR,
+  TY_STRUCT
+} TypeKind;
+
 struct Type {
   TypeKind kind;
   Type *base;
   size_t array_size; // 配列の時のみ使う
+  Member *members;
+};
+
+struct Member {
+  Member *next;
+  Type *ty;
+  char *name;
+  int offset;
 };
 
 typedef struct LVar LVar;
@@ -86,6 +103,7 @@ typedef enum {
   ND_DEREF, // unuary *
   ND_NULL, // 空の値
   ND_SIZEOF, // "sizeof"
+  ND_MEMBER, //struct メンバー変数
 } NodeKind;
 
 typedef struct Node Node;
@@ -116,6 +134,9 @@ struct Node {
   LVar *var;
 
   int val; // kindがND_NUMの時に使う
+
+  char *member_name; // a.b <-のbを保存するやつ
+  Member *member;
 };
 
 
@@ -166,6 +187,7 @@ void error_at(char *loc, char *fmt, ...);
 // Type
 Type *int_type();
 Type *char_type();
+Type *struct_type();
 Type *pointer_to();
 Type *array_of(Type *base, int size);
 void add_type(); 

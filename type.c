@@ -27,6 +27,12 @@ Type *array_of(Type *base, int size) {
   return ty;
 }
 
+Type *struct_type() {
+  Type *ty = calloc(1, sizeof(Type));
+  ty->kind = TY_STRUCT;
+  return ty;
+}
+
 int size_of(Type *ty) {
   if(ty->kind == TY_INT || ty->kind == TY_PTR)
     return 8;
@@ -34,6 +40,21 @@ int size_of(Type *ty) {
     return 1;
   else if (ty->kind == TY_ARRAY)
     return size_of(ty->base) * ty->array_size;
+  else if (ty->kind == TY_STRUCT) {
+    Member *mem = ty->members;
+    while (mem->next)
+      mem = mem->next;
+    return mem->offset + size_of(mem->ty);
+  }
+  exit(1); // エラー処理めんどいので省く
+}
+
+Member *find_member(Type *ty, char *name) {
+  assert(ty->kind == TY_STRUCT);
+  for (Member *mem = ty->members; mem; mem = mem->next)
+    if (!strcmp(mem->name, name))
+      return mem;
+  return NULL;
 }
 
 void visit(Node *node) {
@@ -86,6 +107,14 @@ void visit(Node *node) {
       return;
     case ND_ASSIGN:
       node->ty = node->lhs->ty;
+      return;
+    case ND_MEMBER:
+      if (node->lhs->ty->kind != TY_STRUCT)
+        error("ND_MEMBER エラー");
+      node->member = find_member(node->lhs->ty, node->member_name);
+      if (!node->member)
+        error("ND_MEMBER エラー2");
+      node->ty = node->member->ty;
       return;
     case ND_ADDR:
       if (node->lhs->ty->kind == TY_ARRAY)

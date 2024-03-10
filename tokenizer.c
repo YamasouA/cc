@@ -142,7 +142,7 @@ Token *read_string_literal(Token *cur, char **start) {
 }
 
 static char *starts_with_reserved(char *p) {
-  static char *kw[] = {"return", "if", "else", "while", "for", "sizeof"};
+  static char *kw[] = {"return", "if", "else", "while", "for", "sizeof", "struct"};
 
   for (int i = 0; i < sizeof(kw) / sizeof(*kw); i++) {
     int len = strlen(kw[i]);
@@ -209,7 +209,7 @@ Token *tokenize() {
     }
 
 
-    if (strchr("+-*/()<>=;{},&[]", *p)) {
+    if (strchr("+-*/()<>=;{},&[].", *p)) {
       cur = new_token(TK_RESERVED, cur, p++, 1);
       continue;
     }

@@ -6,6 +6,24 @@ LVarList *scope;
 
 Program *code;
 
+static Function *function();
+void global_var();
+static Node *stmt();
+static Node *expr();
+static Node *assign();
+static Node *equality();
+static Node *relational();
+static Node *add();
+static Node *mul();
+static Node *unary();
+static Node *postfix();
+static Node *primary();
+Member *read_member();
+Member *read_member();
+Type *basetype();
+Type *read_type_suffix(Type *base);
+Type *struct_decl();
+
 // 変数を名前で検索
 LVar *find_lvar(Token *tok) {
   for (LVarList *vl = scope; vl; vl = vl->next) {
@@ -49,18 +67,55 @@ char *create_varname() {
   return strndup(buf, 20);
 }
 
+Member *read_member() {
+  Member *member = calloc(1, sizeof(Member));
+  member->ty = basetype();
+  member->name = expect_ident();
+  member->ty = read_type_suffix(member->ty);
+  expect(";");
+  return member;
+}
+
 // basetype = ("char" | "int") "*"*
 Type *basetype() {
-  Type *ty; 
+  Type *ty;
   if (consume("int")) {
     ty = int_type();
   } else if (consume("char")) {
     ty = char_type();
+  } else if (consume("struct")) {
+    ty = struct_decl();
   } else {
     error_at(token->str, "type error");
   }
   while (consume("*"))
     ty = pointer_to(ty);
+  return ty;
+}
+
+Type *struct_decl() {
+  expect("{");
+
+  Member head;
+  head.next = NULL;
+
+  Member *cur = &head;
+
+  while (!consume("}")) {
+    cur->next = read_member();
+    cur = cur->next;
+  }
+
+  Type *ty = calloc(1, sizeof(Type));
+  ty->kind = TY_STRUCT;
+  ty->members = head.next;
+
+  int offset = 0;
+  for (Member *mem = ty->members; mem; mem = mem->next) {
+    mem->offset = offset;
+    offset += size_of(mem->ty);
+  }
+
   return ty;
 }
 
@@ -73,7 +128,7 @@ bool is_function() {
 }
 
 bool is_type() {
-  return peek("int") || peek("char");
+  return peek("int") || peek("char") || peek("struct");
 }
 
 static Node *new_node(NodeKind kind, Node *lhs, Node *rhs) {
@@ -90,19 +145,6 @@ static Node *new_node_num(int val) {
   node->val = val;
   return node;
 }
-
-static Function *function();
-void global_var();
-static Node *stmt();
-static Node *expr();
-static Node *assign();
-static Node *equality();
-static Node *relational();
-static Node *add();
-static Node *mul();
-static Node *unary();
-static Node *postfix();
-static Node *primary();
 
 // program = function*
 void program() {
@@ -378,17 +420,24 @@ static Node *unary() {
   return postfix();
 }
 
-// postfix = primary ("[" expr "]")*
+// postfix = primary ("[" expr "]" | "." ident)*
 Node *postfix() {
   Node *node = primary();
 
-  while(consume("[")) {
-    // x[y] == *(x+y)
-    node = new_node(ND_ADD, node, expr());
-    expect("]");
-    node = new_node(ND_DEREF, node, NULL);
+  for (;;) {
+    if (consume("[")) {
+      // x[y] == *(x+y)
+      node = new_node(ND_ADD, node, expr());
+      expect("]");
+      node = new_node(ND_DEREF, node, NULL);
+      continue;
+    } else if (consume(".")) {
+      node = new_node(ND_MEMBER, node, NULL);
+      node->member_name = expect_ident();
+      continue;
+    }
+    return node;
   }
-  return node;
 }
 
 // func-args = "(" (assign ("," assign)*)? ")"
