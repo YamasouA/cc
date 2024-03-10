@@ -74,7 +74,7 @@ int main(int argc, char **argv) {
 
   set_offset();
   
-  // コード生成
+  // // コード生成
   codegen();
 
   return 0;

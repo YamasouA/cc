@@ -1,12 +1,19 @@
 #!/bin/bash
 
 cat <<EOF | gcc -xc -c -o tmp2.o -
+#include <stdio.h>
 int ret3() { return 3; }
 int ret5() { return 5; }
 int add(int x, int y) { return x+y; }
 int sub(int x, int y) { return x-y; }
+int sub2(int x, int y, int z) { return x-y-z; }
 int add6(int a, int b, int c, int d, int e, int f) {
   return a+b+c+d+e+f;
+}
+int assert(int a, int b, char *code) {
+  printf("a: %d\n", a);
+  printf("%d, %s => %d expected but got %d\n", b, code, a, b);
+  return 0;
 }
 EOF
 
@@ -89,6 +96,10 @@ assert() {
 
 # assert 8 'int main() {return add(3, 5);}'
 # assert 2 'int main() {return sub(5, 3);}'
+# assert 10 'int main() { add(5, ({int y=2;}));}'
+# assert 11 'int main() { int x = 4; add(5, ({ int y= x + 2;}));}'
+assert 16 'int main() { add(5, ({int x=9; int y=2; x+y;}));}'
+assert 2 'int main() {return sub2(9, ({int x = 2; int y = 4; x + y;}), 1);}'
 # assert 21 'int main() {return add6(1,2,3,4,5,6);}'
 
 # assert 3 'int main() {int x=3; return *&x;}'
@@ -176,12 +187,13 @@ assert() {
 # assert 107 'int main() { return "\k"[0]; }'
 # assert 108 'int main() { return "\l"[0]; }'
 
-assert 2 'int main() { /* return 1; */ return 2; }'
-assert 2 'int main() { // return 1;
-return 2; }'
+# assert 2 'int main() { /* return 1; */ return 2; }'
+# assert 2 'int main() { // return 1;
+# return 2; }'
 
-assert 2 'int main() { int x=2; { int x=3; } return x; }'
-assert 2 'int main() { int x=2; { int x=3; } { int y=4; return x; }}'
-assert 3 'int main() { int x=2; { x=3; } return x; }'
+# assert 2 'int main() { int x=2; { int x=3; } return x; }'
+# assert 2 'int main() { int x=2; { int x=3; } { int y=4; return x; }}'
+# assert 3 'int main() { int x=2; { x=3; } return x; }'
+assert 0 'int main() {assert(1, ({ int a=3; int z=2; a+z; }), "int a=3; int z=2; a+z;");}'
 
 echo OK

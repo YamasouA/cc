@@ -37,6 +37,10 @@ void gen(Node *node) {
     case ND_NUM:
       printf("  push %d\n", node->val);
       return;
+    case ND_EXPR_STMT:
+      gen(node->lhs);
+      printf("  add rsp, 8\n"); // 副作用の結果をスタックから取り除く
+      return;
     case ND_NULL:
       return;
     case ND_LVAR:
@@ -132,11 +136,11 @@ void gen(Node *node) {
       printf(".Lend%d:\n", seq);
       return;
     }
-    case ND_BLOCK: {
+    case ND_BLOCK:
+    case ND_STMT_EXPR:
       for (Node *n = node->body; n; n = n->next)
         gen(n);
       return;
-    }
     case ND_FUNC: {
       Node *cur = node->args;
       int len = 0;
@@ -241,7 +245,6 @@ void emit_text() {
 
     for (Node *node = fn->node; node; node = node->next)
       gen(node);
-    printf("  pop rax\n");
     // 変数分の拡張していた領域を解放する
     printf(".Lreturn.%s:\n", fn->name);
     printf("  mov rsp, rbp\n");

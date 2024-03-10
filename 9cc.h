@@ -28,6 +28,7 @@ struct LVar {
 
   char *contents;
   int cont_len;
+  int val;
 };
 
 typedef struct LVarList LVarList;
@@ -73,6 +74,8 @@ typedef enum {
   ND_NUM, // 整数
   ND_ASSIGN, // =
   ND_LVAR, // ローカル変数
+  ND_STMT_EXPR, // Statement expression
+  ND_EXPR_STMT, // 代入の右辺
   ND_RETURN, // return
   ND_IF, // if
   ND_FOR, // for
@@ -102,7 +105,7 @@ struct Node {
   Node *init;
   Node *inc;
 
-  // Block
+  // Block or statement expression
   Node *body;
 
   // 関数名

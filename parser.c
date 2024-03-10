@@ -188,6 +188,7 @@ Node *declaration() {
   node->lhs->var = var;
   node->rhs = expr();
   expect(";");
+  node = new_node(ND_EXPR_STMT, node, NULL);
   return node;
 }
 
@@ -246,7 +247,7 @@ static Node *stmt() {
       node->kind = ND_FOR;
       expect("(");
       if (!consume(";")) {
-        node->init = expr();
+        node->init = new_node(ND_EXPR_STMT, expr(), NULL);
         expect(";");
       }
       if (!consume(";")) {
@@ -254,7 +255,7 @@ static Node *stmt() {
         expect(";");
       }
       if (!consume(")")) {
-        node->inc = expr();
+        node->inc = new_node(ND_EXPR_STMT, expr(), NULL);
         expect(")");
       }
       node->then = stmt();
@@ -285,7 +286,7 @@ static Node *stmt() {
   }
   if (is_type())
     return declaration();
-  node = expr();
+  node = new_node(ND_EXPR_STMT, expr(), NULL);
   expect(";");
   return node;
 }
@@ -337,8 +338,9 @@ static Node *relational() {
 static Node *add() {
   Node *node = mul();
   for (;;) {
-    if (consume("+"))
+    if (consume("+")) {
       node = new_node(ND_ADD, node, mul());
+    }
     else if (consume("-"))
       node = new_node(ND_SUB, node, mul());
     else
@@ -403,9 +405,29 @@ Node *func_args() {
   return head;
 }
 
-// primary = num | ident func-args? | "(" expr ")" | str
+// stmt = "(" "{" stmt stmt* "}" ")"
+Node *stmt_expr() {
+  Node * node = calloc(1, sizeof(Node));
+  // stmtがからの時にstmt()呼び出しないでexpect_numberに引っかかってエラーで止まる
+  node->body = stmt();
+  node->kind = ND_STMT_EXPR;
+  Node *cur = node->body;
+  LVarList *sc = scope;
+  while (!consume("}")) {
+    cur->next = stmt();
+    cur = cur->next;
+  }
+  expect(")");
+  *cur = *cur->lhs;
+  scope = sc;
+  return node;
+}
+
+// primary = num | ident func-args? | "(" expr ")" | str | "(" "{" stmt-expr-tail "}" ")"
 static Node *primary() {
   if (consume("(")) {
+    if (consume("{"))
+      return stmt_expr();
     Node *node = expr();
     expect(")");
     return node;

@@ -124,11 +124,17 @@ Token *read_string_literal(Token *cur, char **start) {
 
     if (*p == '\\') {
       p++;
-      buf[len++] = escape_char(*p++);
+      if (*p == '"' || *p == 'n') {
+        buf[len++] = '\\';
+        buf[len++] = *p;
+        p++;
+      } else
+        buf[len++] = escape_char(*p++);
     } else {
       buf[len++] = *p++;
     }
   }
+  buf[len] = '\0';
 
   Token *tok = new_token(TK_STR, cur, strdup(buf), strlen(buf));
   *start = p;

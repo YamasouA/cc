@@ -1,3 +1,11 @@
+// -*- c -*-
+
+// This is a line comment.
+
+/*
+ * This is a block comment.
+ */
+
 int g1;
 int g2[4];
 
@@ -190,6 +198,10 @@ int main() {
   assert(106, "\j"[0], "\"\\j\"[0]");
   assert(107, "\k"[0], "\"\\k\"[0]");
   assert(108, "\l"[0], "\"\\l\"[0]");
+
+  assert(2, ({ int x=2; { int x=3; } x; }), "int x=2; { int x=3; } x;");
+  assert(2, ({ int x=2; { int x=3; } int y=4; x; }), "int x=2; { int x=3; } int y=4; x;");
+  assert(3, ({ int x=2; { x=3; } x; }), "int x=2; { x=3; } x;");
 
   printf("OK\n");
   return 0;
