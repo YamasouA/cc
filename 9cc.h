@@ -28,6 +28,14 @@ struct Type {
   int align;
 };
 
+typedef struct TagScope TagScope;
+struct TagScope {
+  TagScope *next;
+  char *name;
+  Type *ty;
+};
+
+
 struct Member {
   Member *next;
   Type *ty;

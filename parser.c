@@ -3,6 +3,7 @@
 LVarList *locals;
 LVarList *globals;
 LVarList *scope;
+TagScope *tag_scope;
 
 Program *code;
 
@@ -23,6 +24,21 @@ Member *read_member();
 Type *basetype();
 Type *read_type_suffix(Type *base);
 Type *struct_decl();
+
+TagScope *find_tag(Token *tok) {
+  for (TagScope *sc = tag_scope; sc; sc = sc->next)
+    if (strlen(sc->name) == tok->len && !memcmp(tok->str, sc->name, tok->len))
+      return sc;
+  return NULL;
+}
+
+void push_tag_scope(Token *tok, Type *ty) {
+  TagScope *sc = calloc(1, sizeof(TagScope));
+  sc->next = tag_scope;
+  sc->name = strndup(tok->str, tok->len);
+  sc->ty = ty;
+  tag_scope = sc;
+}
 
 // 変数を名前で検索
 LVar *find_lvar(Token *tok) {
@@ -93,12 +109,23 @@ Type *basetype() {
   return ty;
 }
 
+// struct-decl = "struct" ident
+//             | "struct" ident? "{" struct-member "}"
 Type *struct_decl() {
+  Token *tag = consume_ident();
+  // 宣言したstructを利用するケース
+  if (tag && !peek("{")) {
+    TagScope *sc = find_tag(tag);
+    if (!sc)
+      error("struct decl error");
+    return sc->ty;
+  }
+
+  // Memberを読む
   expect("{");
 
   Member head;
   head.next = NULL;
-
   Member *cur = &head;
 
   while (!consume("}")) {
@@ -119,6 +146,9 @@ Type *struct_decl() {
     if (ty->align < mem->ty->align)
       ty->align = mem->ty->align;
   }
+
+  if (tag)
+    push_tag_scope(tag, ty);
 
   return ty;
 }
@@ -215,14 +245,19 @@ void global_var() {
 }
 
 // declaration = basetype ident ("[" num "]")* ("=" expr) ";"
+//              | basetype; // struct t {...}; のようなケース
 Node *declaration() {
+  Node *node = calloc(1, sizeof(Node));
   Token *tok = token;
   Type *ty = basetype();
+  if (consume(";")) {
+    node->kind = ND_NULL;
+    return node;
+  }
   char *name = expect_ident();
   ty = read_type_suffix(ty);
   LVar *var = push_var(name, ty, true);
 
-  Node *node = calloc(1, sizeof(Node));
   if (consume(";")) {
     node->kind = ND_NULL;
     return  node;
@@ -320,11 +355,13 @@ static Node *stmt() {
     head.next = NULL;
     Node *cur = &head;
     LVarList *sc = scope; // ブロックに入るまでの情報を保持してブロック間の変数を一気に削除できる
+    TagScope *sc2 = tag_scope; // ブロックに入るまでの情報を保持してブロック間の変数を一気に削除できる
     while (!consume("}")) {
       cur->next = stmt();
       cur = cur->next;
     }
     scope = sc;
+    tag_scope = sc2;
     node = calloc(1, sizeof(Node));
     node->kind = ND_BLOCK;
     node->body = head.next;
@@ -466,6 +503,7 @@ Node *stmt_expr() {
   node->kind = ND_STMT_EXPR;
   Node *cur = node->body;
   LVarList *sc = scope;
+  TagScope *sc2 = tag_scope;
   while (!consume("}")) {
     cur->next = stmt();
     cur = cur->next;
@@ -475,6 +513,7 @@ Node *stmt_expr() {
     error("stmt_exprエラー");
   *cur = *cur->lhs; // コード生成時にND_BLOCKと処理を揃えるために最後の処理をnode自体に移す
   scope = sc;
+  tag_scope = sc2;
   return node;
 }
 
