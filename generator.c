@@ -18,7 +18,7 @@ void gen_lval(Node *node) {
     gen(node->lhs);
     return;
   case ND_MEMBER:
-    gen_lval(node->lhs);
+    gen_lval(node->lhs); // 構造体がlhsにいる
     printf("  pop rax\n");
     printf("  add rax, %d\n", node->member->offset);
     printf("  push rax\n");

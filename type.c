@@ -3,12 +3,14 @@
 Type *int_type() {
   Type *ty = calloc(1, sizeof(Type));
   ty->kind = TY_INT;
+  ty->align = 8;
   return ty;
 }
 
 Type *char_type() {
   Type *ty = calloc(1, sizeof(Type));
   ty->kind = TY_CHAR;
+  ty->align = 1;
   return ty;
 }
 
@@ -16,12 +18,14 @@ Type *pointer_to(Type *base) {
   Type *ty = calloc(1, sizeof(Type));
   ty->kind = TY_PTR;
   ty->base = base;
+  ty->align = 8;
   return ty;
 }
 
 Type *array_of(Type *base, int size) {
   Type *ty = calloc(1, sizeof(Type));
   ty->kind = TY_ARRAY;
+  ty->align = base->align;
   ty->base = base;
   ty->array_size = size;
   return ty;
@@ -31,6 +35,10 @@ Type *struct_type() {
   Type *ty = calloc(1, sizeof(Type));
   ty->kind = TY_STRUCT;
   return ty;
+}
+
+int align_to(int n, int align) {
+  return (n + align - 1) & ~(align - 1);
 }
 
 int size_of(Type *ty) {
@@ -44,7 +52,8 @@ int size_of(Type *ty) {
     Member *mem = ty->members;
     while (mem->next)
       mem = mem->next;
-    return mem->offset + size_of(mem->ty);
+    int end = mem->offset + size_of(mem->ty);
+    return align_to(end, ty->align);
   }
   exit(1); // エラー処理めんどいので省く
 }

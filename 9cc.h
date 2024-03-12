@@ -25,6 +25,7 @@ struct Type {
   Type *base;
   size_t array_size; // 配列の時のみ使う
   Member *members;
+  int align;
 };
 
 struct Member {
@@ -190,5 +191,6 @@ Type *char_type();
 Type *struct_type();
 Type *pointer_to();
 Type *array_of(Type *base, int size);
+int align_to(int n, int align);
 void add_type(); 
 int size_of(Type *ty);

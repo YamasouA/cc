@@ -112,8 +112,12 @@ Type *struct_decl() {
 
   int offset = 0;
   for (Member *mem = ty->members; mem; mem = mem->next) {
+    offset = align_to(offset, mem->ty->align);
     mem->offset = offset;
     offset += size_of(mem->ty);
+
+    if (ty->align < mem->ty->align)
+      ty->align = mem->ty->align;
   }
 
   return ty;
@@ -467,7 +471,9 @@ Node *stmt_expr() {
     cur = cur->next;
   }
   expect(")");
-  *cur = *cur->lhs;
+  if (cur->kind != ND_EXPR_STMT)
+    error("stmt_exprエラー");
+  *cur = *cur->lhs; // コード生成時にND_BLOCKと処理を揃えるために最後の処理をnode自体に移す
   scope = sc;
   return node;
 }
