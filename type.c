@@ -3,7 +3,7 @@
 Type *int_type() {
   Type *ty = calloc(1, sizeof(Type));
   ty->kind = TY_INT;
-  ty->align = 8;
+  ty->align = 4;
   return ty;
 }
 
@@ -42,9 +42,11 @@ int align_to(int n, int align) {
 }
 
 int size_of(Type *ty) {
-  if(ty->kind == TY_INT || ty->kind == TY_PTR)
+  if(ty->kind == TY_INT)
+    return 4;
+  else if (ty->kind == TY_PTR)
     return 8;
-  if (ty->kind == TY_CHAR)
+  else if (ty->kind == TY_CHAR)
     return 1;
   else if (ty->kind == TY_ARRAY)
     return size_of(ty->base) * ty->array_size;
