@@ -1,9 +1,24 @@
 #include "9cc.h"
 
+Type *short_type() {
+  Type *ty = calloc(1, sizeof(Type));
+  ty->kind = TY_SHORT;
+  ty->align = 2;
+  return ty;
+}
+
+
 Type *int_type() {
   Type *ty = calloc(1, sizeof(Type));
   ty->kind = TY_INT;
   ty->align = 4;
+  return ty;
+}
+
+Type *long_type() {
+  Type *ty = calloc(1, sizeof(Type));
+  ty->kind = TY_LONG;
+  ty->align = 8;
   return ty;
 }
 
@@ -44,6 +59,10 @@ int align_to(int n, int align) {
 int size_of(Type *ty) {
   if(ty->kind == TY_INT)
     return 4;
+  else if (ty->kind == TY_SHORT)
+    return 2;
+  else if (ty->kind == TY_LONG)
+    return 8;
   else if (ty->kind == TY_PTR)
     return 8;
   else if (ty->kind == TY_CHAR)

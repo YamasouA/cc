@@ -31,6 +31,7 @@ int labelseq = 0;
 char *funcname;
 // charのような1バイトでは上位のビットが0にリセットされない
 char *argreg1[] = {"dil", "sil", "dl", "cl", "r8b", "r9b"};
+char *argreg2[] = {"di", "si", "dx", "cx", "r8w", "r9w"};
 char *argreg4[] = {"edi", "esi", "edx", "ecx", "r8d", "r9d"};
 char *argreg8[] = {"rdi", "rsi", "rdx", "rcx", "r8", "r9"};
 
@@ -60,6 +61,8 @@ void gen(Node *node) {
       printf("  pop rax\n");
       if (size_of(node->ty) == 1)
         printf("  movsx rax, byte ptr [rax]\n"); // raxのアドレスの値をraxにセットする
+      else if (size_of(node->ty) == 2)
+        printf("  movsx rax, word ptr [rax]\n"); // raxのアドレスの値をraxにセットする
       else if (size_of(node->ty) == 4)
         printf("  movsxd rax, dword ptr [rax]\n"); // raxのアドレスの値をraxにセットする
       else
@@ -76,6 +79,8 @@ void gen(Node *node) {
       printf("  pop rax\n");
       if (size_of(node->ty) == 1)
         printf("  mov [rax], dil\n"); // 右辺を左辺値へ入れる
+      else if (size_of(node->ty) == 2)
+        printf("  mov [rax], di\n"); // raxのアドレスの値をraxにセットする
       else if (size_of(node->ty) == 4)
         printf("  mov [rax], edi\n"); // raxのアドレスの値をraxにセットする
       else
@@ -92,6 +97,8 @@ void gen(Node *node) {
       printf("  pop rax\n");
       if (size_of(node->ty) == 1)
         printf("  movsx rax, byte ptr [rax]\n"); // raxのアドレスの値をraxにセットする
+      else if (size_of(node->ty) == 2)
+        printf("  movsx rax, word ptr [rax]\n"); // raxのアドレスの値をraxにセットする
       else if (size_of(node->ty) == 4)
         printf("  movsxd rax, dword ptr [rax]\n"); // raxのアドレスの値をraxにセットする
       else
@@ -251,6 +258,8 @@ void emit_text() {
       int size = size_of(vl->var->ty);
       if (size == 1) {
         printf("  mov [rbp-%d], %s\n", vl->var->offset, argreg1[i++]);
+      } else if (size == 2) {
+        printf("  mov [rbp-%d], %s\n", vl->var->offset, argreg2[i++]);
       } else if (size == 4) {
         printf("  mov [rbp-%d], %s\n", vl->var->offset, argreg4[i++]);
       } else {

@@ -102,11 +102,15 @@ Member *read_member() {
   return member;
 }
 
-// basetype = ("char" | "int" | struct-decl | typedef-name) "*"*
+// basetype = ("char" | "int" | "short" | "long" | struct-decl | typedef-name) "*"*
 Type *basetype() {
   Type *ty;
   if (consume("int")) {
     ty = int_type();
+  } else if (consume("short")) {
+    ty = short_type();
+  } else if (consume("long")) {
+    ty = long_type();
   } else if (consume("char")) {
     ty = char_type();
   } else if (consume("struct")) {
@@ -173,7 +177,8 @@ bool is_function() {
 }
 
 bool is_type() {
-  return peek("int") || peek("char") || peek("struct") || find_typedef(token);
+  return peek("int") || peek("char") || peek("short") || peek("long") ||
+        peek("struct") || find_typedef(token);
 }
 
 static Node *new_node(NodeKind kind, Node *lhs, Node *rhs) {
