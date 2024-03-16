@@ -54,7 +54,9 @@ void set_offset() {
   for (Function *fn = code->fns; fn; fn = fn->next) {
     int offset = 0;
     for (LVarList *vl = fn->locals; vl; vl = vl->next) {
-      offset = align_to(offset, vl->var->ty->align);  
+      if (vl->var->type_def) // typedefもlocalに含まれている
+        continue;
+      offset = align_to(offset, vl->var->ty->align);
       offset += size_of(vl->var->ty);
       vl->var->offset = offset;
     }

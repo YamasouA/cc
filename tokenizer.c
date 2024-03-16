@@ -142,7 +142,7 @@ Token *read_string_literal(Token *cur, char **start) {
 }
 
 static char *starts_with_reserved(char *p) {
-  static char *kw[] = {"return", "if", "else", "while", "for", "sizeof", "struct"};
+  static char *kw[] = {"return", "if", "else", "while", "for", "sizeof", "struct", "typedef"};
 
   for (int i = 0; i < sizeof(kw) / sizeof(*kw); i++) {
     int len = strlen(kw[i]);
@@ -150,7 +150,7 @@ static char *starts_with_reserved(char *p) {
       return kw[i];
   }
 
-  static char *ops[] = {"==", "!=", "<=", ">="};
+  static char *ops[] = {"==", "!=", "<=", ">=", "->"};
 
   for (int i = 0; i < sizeof(ops) / sizeof(*ops); i++) {
     if (startswith(p, ops[i]))

@@ -75,6 +75,16 @@ LVar *push_var(char *var_name, Type *ty, bool is_local) {
   return lvar;
 }
 
+Type *find_typedef(Token *tok) {
+  if (tok->kind == TK_IDENT) {
+    LVar *sc = find_lvar(tok);
+    if (sc) {
+      return sc->type_def;
+    }
+  }
+  return NULL;
+}
+
 char *create_varname() {
   static int cnt = 0;
   char buf[20];
@@ -92,7 +102,7 @@ Member *read_member() {
   return member;
 }
 
-// basetype = ("char" | "int") "*"*
+// basetype = ("char" | "int" | struct-decl | typedef-name) "*"*
 Type *basetype() {
   Type *ty;
   if (consume("int")) {
@@ -102,8 +112,9 @@ Type *basetype() {
   } else if (consume("struct")) {
     ty = struct_decl();
   } else {
-    error_at(token->str, "type error");
+    ty = find_lvar(consume_ident())->type_def; // typedef
   }
+  assert(ty);
   while (consume("*"))
     ty = pointer_to(ty);
   return ty;
@@ -162,7 +173,7 @@ bool is_function() {
 }
 
 bool is_type() {
-  return peek("int") || peek("char") || peek("struct");
+  return peek("int") || peek("char") || peek("struct") || find_typedef(token);
 }
 
 static Node *new_node(NodeKind kind, Node *lhs, Node *rhs) {
@@ -304,6 +315,7 @@ Function *function() {
 //      | "while" "(" expr ")" stmt
 //      | "for" "(" expr? ";" expr? ";" expr? ")" stmt
 //      | declaration
+//      | 
 static Node *stmt() {
   Node *node;
 
@@ -366,6 +378,17 @@ static Node *stmt() {
     node->kind = ND_BLOCK;
     node->body = head.next;
     return node;
+  }
+
+  if (consume("typedef")) {
+    Type *ty = basetype();
+    char *name = expect_ident(); //typedef でつける名前
+    ty = read_type_suffix(ty);
+    expect(";");
+    // typedefの定義は変数と同様に扱う
+    LVar *type_def = push_var(name, NULL, 1);
+    type_def->type_def = ty;
+    return new_node(ND_NULL, NULL, NULL);
   }
   if (is_type())
     return declaration();
@@ -461,7 +484,7 @@ static Node *unary() {
   return postfix();
 }
 
-// postfix = primary ("[" expr "]" | "." ident)*
+// postfix = primary ("[" expr "]" | "." ident | "->" ident)*
 Node *postfix() {
   Node *node = primary();
 
@@ -473,6 +496,12 @@ Node *postfix() {
       node = new_node(ND_DEREF, node, NULL);
       continue;
     } else if (consume(".")) {
+      node = new_node(ND_MEMBER, node, NULL);
+      node->member_name = expect_ident();
+      continue;
+    } else if (consume("->")) {
+      // x->y == (*x).y
+      node = new_node(ND_DEREF, node, NULL);
       node = new_node(ND_MEMBER, node, NULL);
       node->member_name = expect_ident();
       continue;

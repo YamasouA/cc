@@ -50,6 +50,7 @@ struct LVar {
   char *name; // 編数名
   int offset; // RBPからのオフセット (localの時に使う)
   Type *ty; // 型
+  Type *type_def; // typedefの下の型
   bool is_local; // local or global
 
   char *contents;
