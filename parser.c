@@ -62,7 +62,7 @@ LVar *push_var(char *var_name, Type *ty, bool is_local) {
   if (is_local) {
     vl->next = locals;
     locals = vl;
-  } else {
+  } else if (ty->kind != TY_FUNC) {
     vl->next = globals;
     globals = vl;
   }
@@ -294,12 +294,15 @@ Node *declaration() {
 Function *function() {
   locals = NULL;
   Function *fn = calloc(1, sizeof(Function));
-  basetype();
+  Type *ty = basetype();
   fn->name = expect_ident();
+  // 関数名と型を登録
+  push_var(fn->name, func_type(ty), false);
   expect("(");
   fn->params = read_func_params();
   expect("{");
 
+  // 関数のボディを読む
   Node head;
   head.next = NULL;
   Node *cur = &head;
@@ -570,6 +573,15 @@ static Node *primary() {
       node->kind = ND_FUNC;
       node->funcname = strndup(tok->str, tok->len);
       node->args = func_args();
+
+      LVar *sc = find_lvar(tok);
+      if (sc) {
+        if (sc->ty->kind != TY_FUNC)
+          error("Func error");
+        node->ty = sc->ty->return_ty;
+      } else {
+        node->ty = int_type();
+      }
       return node;
     }
 

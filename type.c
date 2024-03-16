@@ -29,6 +29,14 @@ Type *char_type() {
   return ty;
 }
 
+Type *func_type(Type *return_ty) {
+  Type *ty = calloc(1, sizeof(Type));
+  ty->kind = TY_FUNC;
+  ty->align = 1; // 使わなさそう
+  ty->return_ty = return_ty;
+  return ty;
+}
+
 Type *pointer_to(Type *base) {
   Type *ty = calloc(1, sizeof(Type));
   ty->kind = TY_PTR;
@@ -110,7 +118,6 @@ void visit(Node *node) {
     case ND_NE:
     case ND_LT:
     case ND_LE:
-    case ND_FUNC:
     case ND_NUM:
       node->ty = int_type();
       return;

@@ -19,7 +19,8 @@ typedef enum {
   TY_PTR,
   TY_ARRAY,
   TY_CHAR,
-  TY_STRUCT
+  TY_STRUCT,
+  TY_FUNC,
 } TypeKind;
 
 struct Type {
@@ -28,6 +29,7 @@ struct Type {
   size_t array_size; // 配列の時のみ使う
   Member *members;
   int align;
+  Type *return_ty; // 関数の戻り値の型
 };
 
 typedef struct TagScope TagScope;
@@ -200,6 +202,7 @@ void error_at(char *loc, char *fmt, ...);
 Type *short_type();
 Type *int_type();
 Type *long_type();
+Type *func_type();
 Type *char_type();
 Type *struct_type();
 Type *pointer_to();
