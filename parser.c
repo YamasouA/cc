@@ -483,6 +483,7 @@ static Node *mul() {
 
 // unary = ("+" | "-" | "*" | "&")? unary
 //        | "sizeof" unary
+//        | "sizeof" "(" type-name ")" 
 //        | postfix
 static Node *unary() {
   if (consume("+"))
@@ -493,8 +494,21 @@ static Node *unary() {
     return new_node(ND_DEREF, unary(), NULL);
   if (consume("&"))
     return new_node(ND_ADDR, unary(), NULL);
-  if (consume("sizeof"))
+  if (consume("sizeof")) {
+    if (consume("(")) {
+      if (is_type()) { // sizeof(int)のケース
+        Type *ty = basetype();
+        ty = read_type_suffix(ty);
+        expect(")");
+        return new_node_num(size_of(ty));
+      } else { // sizeof(var) のケース
+        Node *node = expr();
+        expect(")");
+        return new_node(ND_SIZEOF, node, NULL);
+      }
+    }
     return new_node(ND_SIZEOF, unary(), NULL);
+  }
   return postfix();
 }
 
