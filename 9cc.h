@@ -120,6 +120,7 @@ typedef enum {
   ND_NULL, // 空の値
   ND_SIZEOF, // "sizeof"
   ND_MEMBER, //struct メンバー変数
+  ND_CAST, // 型変換
 } NodeKind;
 
 typedef struct Node Node;
