@@ -117,6 +117,8 @@ Type *basetype() {
     ty = struct_decl();
   } else if (consume("void")) {
     ty = void_type();
+  } else if (consume("_Bool")) {
+    ty = bool_type();
   } else {
     ty = find_lvar(consume_ident())->type_def; // typedef
   }
@@ -180,7 +182,7 @@ bool is_function() {
 
 bool is_type() {
   return peek("int") || peek("char") || peek("short") || peek("long") ||
-        peek("struct") || find_typedef(token) || peek("void");
+        peek("struct") || find_typedef(token) || peek("void") || peek("_Bool");
 }
 
 static Node *new_node(NodeKind kind, Node *lhs, Node *rhs) {

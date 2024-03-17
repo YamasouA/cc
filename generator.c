@@ -77,6 +77,13 @@ void gen(Node *node) {
 
       printf("  pop rdi\n"); // 右辺値がstackのtopに入る
       printf("  pop rax\n");
+
+      if (node->ty->kind == TY_BOOL) {
+        printf("  cmp rdi, 0\n");
+        printf("  setne dil\n");
+        printf("  movzb rdi, dil\n");
+      }
+
       if (size_of(node->ty) == 1)
         printf("  mov [rax], dil\n"); // 右辺を左辺値へ入れる
       else if (size_of(node->ty) == 2)

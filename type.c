@@ -7,6 +7,13 @@ Type *void_type() {
   return ty;
 }
 
+Type *bool_type() {
+  Type *ty = calloc(1, sizeof(Type));
+  ty->kind = TY_BOOL;
+  ty->align = 1;
+  return ty;
+}
+
 Type *short_type() {
   Type *ty = calloc(1, sizeof(Type));
   ty->kind = TY_SHORT;
@@ -80,7 +87,7 @@ int size_of(Type *ty) {
     return 8;
   else if (ty->kind == TY_PTR)
     return 8;
-  else if (ty->kind == TY_CHAR)
+  else if (ty->kind == TY_CHAR || ty->kind == TY_BOOL)
     return 1;
   else if (ty->kind == TY_ARRAY)
     return size_of(ty->base) * ty->array_size;
