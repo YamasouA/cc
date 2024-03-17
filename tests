@@ -20,7 +20,6 @@ int assert(int expected, int actual, char *code) {
 
 int ret3() {
   return 3;
-  return 5;
 }
 
 int add2(int x, int y) {
@@ -267,6 +266,8 @@ int main() {
   assert(1, sub_long(7, 3, 3), "sub_long(7, 3, 3)");
 
   assert(3, *g1_ptr(), "*g1_ptr()");
+
+  { void *x; }
 
   printf("OK\n");
   return 0;

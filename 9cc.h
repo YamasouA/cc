@@ -21,6 +21,7 @@ typedef enum {
   TY_CHAR,
   TY_STRUCT,
   TY_FUNC,
+  TY_VOID,
 } TypeKind;
 
 struct Type {
@@ -199,6 +200,7 @@ void error(char *fmt, ...);
 void error_at(char *loc, char *fmt, ...);
 
 // Type
+Type *void_type();
 Type *short_type();
 Type *int_type();
 Type *long_type();

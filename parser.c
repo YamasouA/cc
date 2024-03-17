@@ -102,7 +102,7 @@ Member *read_member() {
   return member;
 }
 
-// basetype = ("char" | "int" | "short" | "long" | struct-decl | typedef-name) "*"*
+// basetype = ("void" | "char" | "int" | "short" | "long" | struct-decl | typedef-name) "*"*
 Type *basetype() {
   Type *ty;
   if (consume("int")) {
@@ -115,6 +115,8 @@ Type *basetype() {
     ty = char_type();
   } else if (consume("struct")) {
     ty = struct_decl();
+  } else if (consume("void")) {
+    ty = void_type();
   } else {
     ty = find_lvar(consume_ident())->type_def; // typedef
   }
@@ -178,7 +180,7 @@ bool is_function() {
 
 bool is_type() {
   return peek("int") || peek("char") || peek("short") || peek("long") ||
-        peek("struct") || find_typedef(token);
+        peek("struct") || find_typedef(token) || peek("void");
 }
 
 static Node *new_node(NodeKind kind, Node *lhs, Node *rhs) {
@@ -272,6 +274,8 @@ Node *declaration() {
   }
   char *name = expect_ident();
   ty = read_type_suffix(ty);
+  if (ty->kind == TY_VOID)
+    error("変数にvoid型は使えません");
   LVar *var = push_var(name, ty, true);
 
   if (consume(";")) {

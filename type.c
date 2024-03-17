@@ -1,12 +1,18 @@
 #include "9cc.h"
 
+Type *void_type() {
+  Type *ty = calloc(1, sizeof(Type));
+  ty->kind = TY_VOID;
+  ty->align = 1;
+  return ty;
+}
+
 Type *short_type() {
   Type *ty = calloc(1, sizeof(Type));
   ty->kind = TY_SHORT;
   ty->align = 2;
   return ty;
 }
-
 
 Type *int_type() {
   Type *ty = calloc(1, sizeof(Type));
@@ -65,6 +71,7 @@ int align_to(int n, int align) {
 }
 
 int size_of(Type *ty) {
+  assert(ty->kind != TY_VOID);
   if(ty->kind == TY_INT)
     return 4;
   else if (ty->kind == TY_SHORT)
@@ -163,6 +170,8 @@ void visit(Node *node) {
       if (!node->lhs->ty->base)
         error("ND_DEREF エラー");
       node->ty = node->lhs->ty->base;
+      if (node->ty->kind == TY_VOID)
+        error("void型のポインタをDEREF");
       return;
     case ND_SIZEOF:
       node->kind = ND_NUM;
