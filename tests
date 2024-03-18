@@ -54,7 +54,7 @@ int *g1_ptr() {
   return &g1;
 }
 
-char char_fn() { return 257; }
+char char_fn();
 
 int fib(int x) {
   if (x<=1)

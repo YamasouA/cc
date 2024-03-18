@@ -210,11 +210,14 @@ void program() {
 
   while (!at_eof()) {
     if (is_function()) {
-      cur->next = function();
+      Function *fn = function();
+      if (!fn)
+        continue;
+      cur->next = fn;
       cur = cur->next;
-    } else {
-      global_var();
+      continue;
     }
+    global_var();
   }
   
   Program *prog = calloc(1, sizeof(Program)); 
@@ -296,7 +299,7 @@ Node *declaration() {
   return node;
 }
 
-// functoin = basetype ident "(" params? ")" "{" stmt* "}"
+// functoin = basetype ident "(" params? ")" ("{" stmt* "}" | ";")
 // params = basetype ident ("," basetype ident)*
 Function *function() {
   locals = NULL;
@@ -307,13 +310,15 @@ Function *function() {
   push_var(fn->name, func_type(ty), false);
   expect("(");
   fn->params = read_func_params();
-  expect("{");
+
+  if (consume(";"))
+    return NULL;
 
   // 関数のボディを読む
   Node head;
   head.next = NULL;
   Node *cur = &head;
-
+  expect("{");
   while (!consume("}")) {
     cur->next = stmt();
     cur = cur->next;
