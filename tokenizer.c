@@ -182,7 +182,8 @@ static char *starts_with_reserved(char *p) {
 
   static char *types[] = {"int", "char", "short", "long", "void", "_Bool"};
   for (int i = 0; i < sizeof(types) / sizeof(*types); i++) {
-    if (startswith(p, types[i]))
+    int len = strlen(types[i]);
+    if (startswith(p, types[i]) && !is_alnum(p[len]))
       return types[i];
   }
   return NULL;

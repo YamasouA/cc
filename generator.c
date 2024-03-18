@@ -218,6 +218,8 @@ void gen(Node *node) {
       printf("  add rsp, 8\n");
       printf(".Lend%d:\n", seq);
       printf("  push rax\n");
+
+      truncate(node->ty);
       return;
     }
   }
