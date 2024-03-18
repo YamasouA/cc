@@ -141,6 +141,29 @@ Token *read_string_literal(Token *cur, char **start) {
   return tok;
 }
 
+Token *read_char_literal(Token *cur, char **start) {
+  char *p = *start + 1;
+  if (*p == '\0')
+    error_at(*start, "文字リテラルが閉じられていません");
+  
+  char c;
+  if (*p == '\\') {
+    p++;
+    c = escape_char(*p++);
+  } else {
+    c = *p++;
+  }
+
+  if (*p != '\'')
+    error_at(*start, "文字リテラルが閉じられていません");
+  p++;
+
+  Token *tok = new_token(TK_NUM, cur, *start, p - *start);
+  tok->val = c;
+  *start = p;
+  return tok;
+}
+
 static char *starts_with_reserved(char *p) {
   static char *kw[] = {"return", "if", "else", "while", "for", "sizeof", "struct", "typedef"};
 
@@ -205,6 +228,11 @@ Token *tokenize() {
 
     if (*p == '"') {
       cur = read_string_literal(cur, &p);
+      continue;
+    }
+
+    if (*p == '\'') {
+      cur = read_char_literal(cur, &p);
       continue;
     }
 
