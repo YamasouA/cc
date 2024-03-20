@@ -25,6 +25,7 @@ Member *read_member();
 Type *basetype();
 Type *read_type_suffix(Type *base);
 Type *struct_decl();
+Type *enum_decl();
 
 TagScope *find_tag(Token *tok) {
   for (TagScope *sc = tag_scope; sc; sc = sc->next)
@@ -120,12 +121,59 @@ Type *basetype() {
     ty = void_type();
   } else if (consume("_Bool")) {
     ty = bool_type();
+  } else if (peek("enum")) {
+    ty = enum_decl();
   } else {
     ty = find_lvar(consume_ident())->type_def; // typedef
   }
   assert(ty);
   while (consume("*"))
     ty = pointer_to(ty);
+  return ty;
+}
+
+// enum_decl = "enum" ident
+//           | "enum" ident? "{" enum-list? "}"
+// enum-list = ident ("=" num)? ("," ident ("=" num)?)* ","?
+Type *enum_decl() {
+  expect("enum");
+  Type *ty = enum_type();
+
+  // enum tag
+  Token *tag = consume_ident();
+  if (tag && !peek("{")) {
+    TagScope *sc = find_tag(tag); 
+    if (!sc)
+      error("enum error");
+    if (sc->ty->kind != TY_ENUM)
+      error("enum error2");
+    return sc->ty; 
+  }
+
+  expect("{");
+
+  // enum-list
+  int cnt = 0;
+  for (;;) {
+    char *name = expect_ident();
+    if (consume("="))
+      cnt = expect_number();
+    
+    LVar *sc = push_var(name, ty, true); // typeにセットしてるが本当はセットしたくない
+    sc->enum_ty = ty;
+    sc->enum_val = cnt++;
+
+    if (consume(",")) {
+      if (consume("}"))
+        break;
+      continue;
+    }
+    expect("}");
+    break;
+  }
+
+  if (tag)
+    push_tag_scope(tag, ty);
   return ty;
 }
 
@@ -138,6 +186,8 @@ Type *struct_decl() {
     TagScope *sc = find_tag(tag);
     if (!sc)
       error("struct decl error");
+    if (sc->ty->kind != TY_STRUCT)
+      error("struct decl error2");
     return sc->ty;
   }
 
@@ -182,7 +232,7 @@ bool is_function() {
 }
 
 bool is_type() {
-  return peek("int") || peek("char") || peek("short") || peek("long") ||
+  return peek("int") || peek("char") || peek("short") || peek("long") || peek("enum") ||
         peek("struct") || find_typedef(token) || peek("void") || peek("_Bool");
 }
 
@@ -621,6 +671,9 @@ static Node *primary() {
 
       LVar *sc = find_lvar(tok);
       if (sc) {
+        if (sc->enum_ty) {
+          return new_node_num(sc->enum_val);
+        }
         if (sc->ty->kind != TY_FUNC)
           error("Func error");
         node->ty = sc->ty->return_ty;
@@ -634,11 +687,12 @@ static Node *primary() {
     node->kind = ND_LVAR;
     LVar *lvar = find_lvar(tok);
     if (lvar) {
+      if (lvar->enum_ty)
+        return new_node_num(lvar->enum_val);
       node->var = lvar;
-    } else {
-        error_at(tok->str, "宣言されていません");
+      return node;
     }
-    return node;
+    error_at(tok->str, "宣言されていません");
   }
 
   if (token->kind == TK_STR) {

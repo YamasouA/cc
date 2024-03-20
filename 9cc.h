@@ -23,6 +23,7 @@ typedef enum {
   TY_FUNC,
   TY_VOID,
   TY_BOOL,
+  TY_ENUM,
 } TypeKind;
 
 struct Type {
@@ -56,7 +57,9 @@ struct LVar {
   char *name; // 編数名
   int offset; // RBPからのオフセット (localの時に使う)
   Type *ty; // 型
-  Type *type_def; // typedefの下の型
+  Type *type_def; // typedefの型
+  Type *enum_ty; // enum
+  int enum_val; // enumの値
   bool is_local; // local or global
 
   char *contents;
@@ -207,6 +210,7 @@ Type *bool_type();
 Type *short_type();
 Type *int_type();
 Type *long_type();
+Type *enum_type();
 Type *func_type();
 Type *char_type();
 Type *struct_type();

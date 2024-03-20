@@ -35,6 +35,13 @@ Type *long_type() {
   return ty;
 }
 
+Type *enum_type() {
+   Type *ty = calloc(1, sizeof(Type));
+   ty->kind = TY_ENUM;
+   ty->align = 4;
+   return ty;
+}
+
 Type *char_type() {
   Type *ty = calloc(1, sizeof(Type));
   ty->kind = TY_CHAR;
@@ -79,7 +86,7 @@ int align_to(int n, int align) {
 
 int size_of(Type *ty) {
   assert(ty->kind != TY_VOID);
-  if(ty->kind == TY_INT)
+  if(ty->kind == TY_INT || ty->kind == TY_ENUM)
     return 4;
   else if (ty->kind == TY_SHORT)
     return 2;
