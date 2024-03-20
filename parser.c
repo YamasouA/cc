@@ -26,6 +26,7 @@ Type *basetype();
 Type *read_type_suffix(Type *base);
 Type *struct_decl();
 Type *enum_decl();
+bool is_type();
 
 TagScope *find_tag(Token *tok) {
   for (TagScope *sc = tag_scope; sc; sc = sc->next)
@@ -49,9 +50,23 @@ LVar *find_lvar(Token *tok) {
     if (strlen(var->name) == tok->len && !memcmp(tok->str, var->name, tok->len)) {
       return var;
     }
+    // varにnameとstatic_nameで分けるのはあまり良くないので治したい
+    if (var->static_name != NULL) {
+      if (strlen(var->static_name) == tok->len && !memcmp(tok->str, var->static_name, tok->len)) {
+        return var;
+      }
+    }
   }
   return NULL;
 }
+
+LVarList *push_scope(LVar *var) {
+  LVarList *sc = calloc(1, sizeof(LVarList));
+  sc->var = var;
+  sc->next = scope;
+  scope = sc;
+  return sc;
+} 
 
 LVar *push_var(char *var_name, Type *ty, bool is_local) {
   LVar *lvar = calloc(1, sizeof(LVar));
@@ -68,11 +83,6 @@ LVar *push_var(char *var_name, Type *ty, bool is_local) {
     vl->next = globals;
     globals = vl;
   }
-
-  LVarList *sc = calloc(1, sizeof(LVarList));
-  sc->var = lvar;
-  sc->next = scope;
-  scope = sc;
 
   return lvar;
 }
@@ -104,31 +114,41 @@ Member *read_member() {
   return member;
 }
 
-// basetype = ("void" | "char" | "int" | "short" | "long" | struct-decl | typedef-name) "*"*
+// basetype = "static"* ("void" | "char" | "int" | "short" | "long" | struct-decl | typedef-name) "*"*
 Type *basetype() {
   Type *ty;
-  if (consume("int")) {
-    ty = int_type();
-  } else if (consume("short")) {
-    ty = short_type();
-  } else if (consume("long")) {
-    ty = long_type();
-  } else if (consume("char")) {
-    ty = char_type();
-  } else if (consume("struct")) {
-    ty = struct_decl();
-  } else if (consume("void")) {
-    ty = void_type();
-  } else if (consume("_Bool")) {
-    ty = bool_type();
-  } else if (peek("enum")) {
-    ty = enum_decl();
+  bool is_static = false;
+  // static は本来先頭以外でも良いのでここは修正が必要
+  if (consume("static"))
+    is_static = true;
+  if (is_type()) {
+      if (consume("int")) {
+      ty = int_type();
+    } else if (consume("short")) {
+      ty = short_type();
+    } else if (consume("long")) {
+      ty = long_type();
+    } else if (consume("char")) {
+      ty = char_type();
+    } else if (consume("struct")) {
+      ty = struct_decl();
+    } else if (consume("void")) {
+      ty = void_type();
+    } else if (consume("_Bool")) {
+      ty = bool_type();
+    } else if (peek("enum")) {
+      ty = enum_decl();
+    } else {
+      ty = find_typedef(consume_ident()); // typedef
+    }
   } else {
-    ty = find_lvar(consume_ident())->type_def; // typedef
+    ty = int_type();
   }
+  
   assert(ty);
   while (consume("*"))
     ty = pointer_to(ty);
+  ty->is_static = is_static;
   return ty;
 }
 
@@ -162,6 +182,7 @@ Type *enum_decl() {
     LVar *sc = push_var(name, ty, true); // typeにセットしてるが本当はセットしたくない
     sc->enum_ty = ty;
     sc->enum_val = cnt++;
+    push_scope(sc);
 
     if (consume(",")) {
       if (consume("}"))
@@ -233,7 +254,7 @@ bool is_function() {
 
 bool is_type() {
   return peek("int") || peek("char") || peek("short") || peek("long") || peek("enum") ||
-        peek("struct") || find_typedef(token) || peek("void") || peek("_Bool");
+        peek("struct") || find_typedef(token) || peek("void") || peek("_Bool") || peek("static");
 }
 
 static Node *new_node(NodeKind kind, Node *lhs, Node *rhs) {
@@ -294,6 +315,7 @@ LVarList *read_func_params() {
   ty = read_type_suffix(ty);
   LVarList *head = calloc(1, sizeof(LVarList));
   head->var = push_var(name, ty, true);
+  push_scope(head->var);
   LVarList *cur = head;
 
   while (!consume(")")) {
@@ -303,6 +325,7 @@ LVarList *read_func_params() {
     ty = read_type_suffix(ty);
     cur->next = calloc(1, sizeof(LVarList));
     cur->next->var = push_var(name, ty, true);
+    push_scope(cur->next->var);
     cur = cur->next;
   }
 
@@ -315,7 +338,8 @@ void global_var() {
   char *name = expect_ident();
   ty = read_type_suffix(ty);
   expect(";");
-  push_var(name, ty, false);
+  LVar *var = push_var(name, ty, false);
+  push_scope(var);
 }
 
 // declaration = basetype ident ("[" num "]")* ("=" expr) ";"
@@ -332,7 +356,13 @@ Node *declaration() {
   ty = read_type_suffix(ty);
   if (ty->kind == TY_VOID)
     error("変数にvoid型は使えません");
-  LVar *var = push_var(name, ty, true);
+  bool is_local = true;
+  if (ty->is_static) {
+    is_local = false;
+  }
+  LVar *var = push_var(create_varname(), ty, is_local);
+  var->static_name = name;
+  push_scope(var);
 
   if (consume(";")) {
     node->kind = ND_NULL;
@@ -357,7 +387,8 @@ Function *function() {
   Type *ty = basetype();
   fn->name = expect_ident();
   // 関数名と型を登録
-  push_var(fn->name, func_type(ty), false);
+  LVar *var = push_var(fn->name, func_type(ty), false);
+  push_scope(var);
   expect("(");
   fn->params = read_func_params();
 
@@ -457,6 +488,7 @@ static Node *stmt() {
     expect(";");
     // typedefの定義は変数と同様に扱う
     LVar *type_def = push_var(name, NULL, 1);
+    push_scope(type_def);
     type_def->type_def = ty;
     return new_node(ND_NULL, NULL, NULL);
   }
@@ -698,6 +730,7 @@ static Node *primary() {
   if (token->kind == TK_STR) {
     // + 1 \0の分
     Type *ty = array_of(char_type(), token->len + 1);
+    // STRは参照する必要がないためpush_scopeが不要
     LVar *var = push_var(create_varname(), ty, false);
     var->contents = strndup(token->str, token->len);
     var->cont_len = token->len;

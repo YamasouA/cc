@@ -33,6 +33,7 @@ struct Type {
   Member *members;
   int align;
   Type *return_ty; // 関数の戻り値の型
+  bool is_static;
 };
 
 typedef struct TagScope TagScope;
@@ -61,6 +62,7 @@ struct LVar {
   Type *enum_ty; // enum
   int enum_val; // enumの値
   bool is_local; // local or global
+  char *static_name; // local or global
 
   char *contents;
   int cont_len;
