@@ -27,6 +27,7 @@ Type *read_type_suffix(Type *base);
 Type *struct_decl();
 Type *enum_decl();
 bool is_type();
+Type *declarator(Type *ty, char **name);
 
 TagScope *find_tag(Token *tok) {
   for (TagScope *sc = tag_scope; sc; sc = sc->next)
@@ -106,11 +107,15 @@ char *create_varname() {
 }
 
 Member *read_member() {
+  char *name = NULL;
   Member *member = calloc(1, sizeof(Member));
-  member->ty = basetype();
-  member->name = expect_ident();
-  member->ty = read_type_suffix(member->ty);
+  Type *ty = basetype();
+  ty = declarator(ty, &name);
+  ty = read_type_suffix(ty);
   expect(";");
+  member->ty = ty;
+  member->name = name;
+  member->ty = ty;
   return member;
 }
 
@@ -144,12 +149,40 @@ Type *basetype() {
   } else {
     ty = int_type();
   }
-  
-  assert(ty);
-  while (consume("*"))
-    ty = pointer_to(ty);
   ty->is_static = is_static;
   return ty;
+}
+
+// declarator = "*"* ("(" declarator ")" | ident) type-suffix
+Type *declarator(Type *ty, char **name) {
+  while (consume("*"))
+    ty = pointer_to(ty);
+
+  if (consume("(")) {
+    Type *placeholder = calloc(1, sizeof(Type));
+    Type *new_ty = declarator(placeholder, name);
+    expect(")");
+    *placeholder = *read_type_suffix(ty);
+    return new_ty;
+  }
+
+  *name = expect_ident();
+  return read_type_suffix(ty);
+}
+
+Type *abstract_declarator(Type *ty) {
+  while (consume("*"))
+    ty = pointer_to(ty);
+
+  if (consume("(")) {
+    Type *placeholder = calloc(1, sizeof(Type));
+    Type *new_ty = abstract_declarator(placeholder);
+    expect(")");
+    *placeholder = *read_type_suffix(ty);
+    return new_ty;
+  }
+
+  return read_type_suffix(ty); 
 }
 
 // enum_decl = "enum" ident
@@ -246,8 +279,10 @@ Type *struct_decl() {
 
 bool is_function() {
   Token *tok = token;
-  basetype();
-  bool is_func = consume_ident() && consume("(");
+  Type *ty = basetype();
+  char *name = NULL;
+  declarator(ty, &name);
+  bool is_func = name && consume("(");
   token = tok;
   return is_func;
 }
@@ -297,6 +332,7 @@ void program() {
   code = prog;
 }
 
+// type-suffix = ("[" num "]" type-suffix)?
 Type *read_type_suffix(Type *base) {
   if (!consume("["))
     return base;
@@ -311,8 +347,10 @@ LVarList *read_func_params() {
     return NULL;
   
   Type *ty = basetype();
-  char *name = expect_ident();
+  char *name = NULL;
+  ty = declarator(ty, &name);
   ty = read_type_suffix(ty);
+
   LVarList *head = calloc(1, sizeof(LVarList));
   head->var = push_var(name, ty, true);
   push_scope(head->var);
@@ -321,7 +359,8 @@ LVarList *read_func_params() {
   while (!consume(")")) {
     expect(",");
     ty = basetype();
-    char *name = expect_ident();
+    char *name = NULL;
+    ty = declarator(ty, &name);
     ty = read_type_suffix(ty);
     cur->next = calloc(1, sizeof(LVarList));
     cur->next->var = push_var(name, ty, true);
@@ -335,7 +374,8 @@ LVarList *read_func_params() {
 // global-var = basetype ident ("[" num "]")* ";"
 void global_var() {
   Type *ty = basetype();
-  char *name = expect_ident();
+  char *name = NULL;
+  ty = declarator(ty, &name);
   ty = read_type_suffix(ty);
   expect(";");
   LVar *var = push_var(name, ty, false);
@@ -352,7 +392,8 @@ Node *declaration() {
     node->kind = ND_NULL;
     return node;
   }
-  char *name = expect_ident();
+  char *name = NULL;
+  ty = declarator(ty, &name);
   ty = read_type_suffix(ty);
   if (ty->kind == TY_VOID)
     error("変数にvoid型は使えません");
@@ -385,7 +426,9 @@ Function *function() {
   locals = NULL;
   Function *fn = calloc(1, sizeof(Function));
   Type *ty = basetype();
-  fn->name = expect_ident();
+  char *name = NULL;
+  ty = declarator(ty, &name);
+  fn->name = name;
   // 関数名と型を登録
   LVar *var = push_var(fn->name, func_type(ty), false);
   push_scope(var);
@@ -493,7 +536,8 @@ static Node *stmt() {
 
   if (consume("typedef")) {
     Type *ty = basetype();
-    char *name = expect_ident(); //typedef でつける名前
+    char *name = NULL; //typedef でつける名前
+    ty = declarator(ty, &name);
     ty = read_type_suffix(ty);
     expect(";");
     // typedefの定義は変数と同様に扱う
@@ -586,6 +630,7 @@ Node *cast() {
   if (consume("(")) {
     if (is_type()) {
       Type *ty = basetype();
+      ty = abstract_declarator(ty);
       ty = read_type_suffix(ty);
       expect(")");
       Node *node = new_node(ND_CAST, cast(), NULL);
@@ -615,6 +660,8 @@ static Node *unary() {
     if (consume("(")) {
       if (is_type()) { // sizeof(int)のケース
         Type *ty = basetype();
+        char *name = NULL;
+        ty = abstract_declarator(ty);
         ty = read_type_suffix(ty);
         expect(")");
         return new_node_num(size_of(ty));
