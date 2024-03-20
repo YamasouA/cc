@@ -414,9 +414,9 @@ Function *function() {
 //      | return expr ";"
 //      | "if" "(" expr ")" stmt ("else" stmt)?
 //      | "while" "(" expr ")" stmt
-//      | "for" "(" expr? ";" expr? ";" expr? ")" stmt
+//      | "for" "(" (expr? ";" | declaration) expr? ";" expr? ")" stmt
 //      | declaration
-//      | 
+//      | expr ";"
 static Node *stmt() {
   Node *node;
 
@@ -440,9 +440,16 @@ static Node *stmt() {
       node = calloc(1, sizeof(Node));
       node->kind = ND_FOR;
       expect("(");
+      LVarList *sc1 = scope;
+      TagScope *sc2 = tag_scope;
+
       if (!consume(";")) {
-        node->init = new_node(ND_EXPR_STMT, expr(), NULL);
-        expect(";");
+        if (is_type()) {
+          node->init = declaration();
+        } else {
+          node->init = new_node(ND_EXPR_STMT, expr(), NULL);
+          expect(";");
+        }
       }
       if (!consume(";")) {
         node->cond = expr();
@@ -453,6 +460,9 @@ static Node *stmt() {
         expect(")");
       }
       node->then = stmt();
+
+      scope = sc1;
+      tag_scope = sc2;
       return node;
   } else if (consume("while")) {
       node = calloc(1, sizeof(Node));
