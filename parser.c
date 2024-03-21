@@ -643,7 +643,8 @@ Node *cast() {
   return unary();
 }
 
-// unary = ("+" | "-" | "*" | "&")? cast 
+// unary = ("+" | "-" | "*" | "&")? cast
+//        | ("++" | "--") unary
 //        | "sizeof" expr
 //        | "sizeof" "(" type-name ")" 
 //        | postfix
@@ -656,6 +657,10 @@ static Node *unary() {
     return new_node(ND_DEREF, cast(), NULL);
   if (consume("&"))
     return new_node(ND_ADDR, cast(), NULL);
+  if (consume("++"))
+    return new_node(ND_PRE_INC, unary(), NULL);
+  if (consume("--"))
+    return new_node(ND_PRE_DEC, unary(), NULL);
   if (consume("sizeof")) {
     if (consume("(")) {
       if (is_type()) { // sizeof(int)のケース
@@ -676,7 +681,7 @@ static Node *unary() {
   return postfix();
 }
 
-// postfix = primary ("[" expr "]" | "." ident | "->" ident)*
+// postfix = primary ("[" expr "]" | "." ident | "->" ident | "++" | "--")*
 Node *postfix() {
   Node *node = primary();
 
@@ -696,6 +701,14 @@ Node *postfix() {
       node = new_node(ND_DEREF, node, NULL);
       node = new_node(ND_MEMBER, node, NULL);
       node->member_name = expect_ident();
+      continue;
+    }
+    if (consume("++")) {
+      node = new_node(ND_POST_INC, node, NULL);
+      continue;
+    }
+    if (consume("--")) {
+      node = new_node(ND_POST_DEC, node, NULL);
       continue;
     }
     return node;

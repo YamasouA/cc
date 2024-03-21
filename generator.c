@@ -2,6 +2,19 @@
 
 void gen(Node *node);
 
+void inc(Type *ty) {
+  printf("  pop rax\n");
+  // ポインタなら型のサイズに合わせて動かす
+  printf("  add rax, %d\n", ty->base ? size_of(ty->base) : 1);
+  printf("  push rax\n");
+}
+
+void dec(Type *ty) {
+  printf("  pop rax\n");
+  printf("  sub rax, %d\n", ty->base ? size_of(ty->base) : 1);
+  printf("  push rax\n");
+}
+
 // 左辺値の変数のアドレスを計算しスタックにプッシュする
 void gen_lval(Node *node) {
   switch (node->kind) {
@@ -117,6 +130,155 @@ void gen(Node *node) {
         printf("  mov [rax], rdi\n"); // 右辺を左辺値へ入れる
       printf("  push rdi\n");
       return;
+    case ND_PRE_INC:
+      gen_lval(node->lhs);
+      printf("  push [rsp]\n");
+      printf("  pop rax\n");
+      int sz = size_of(node->ty);
+      if (sz == 1) {
+        printf("  movsx rax, byte ptr [rax]\n");
+      } else if (sz == 2) {
+        printf("  movsx rax, word ptr [rax]\n");
+      } else if (sz == 4) {
+        printf("  movsxd rax, dword ptr [rax]\n");
+      } else {
+        assert(sz == 8);
+        printf("  mov rax, [rax]\n");
+      }
+      printf("  push rax\n");
+      inc(node->ty);
+      printf("  pop rdi\n"); // 右辺値がstackのtopに入る
+      printf("  pop rax\n");
+
+      if (node->ty->kind == TY_BOOL) {
+        printf("  cmp rdi, 0\n");
+        printf("  setne dil\n");
+        printf("  movzb rdi, dil\n");
+      }
+
+      if (size_of(node->ty) == 1)
+        printf("  mov [rax], dil\n"); // 右辺を左辺値へ入れる
+      else if (size_of(node->ty) == 2)
+        printf("  mov [rax], di\n"); // raxのアドレスの値をraxにセットする
+      else if (size_of(node->ty) == 4)
+        printf("  mov [rax], edi\n"); // raxのアドレスの値をraxにセットする
+      else
+        printf("  mov [rax], rdi\n"); // 右辺を左辺値へ入れる
+      printf("  push rdi\n");
+      return; 
+    case ND_PRE_DEC: {
+      gen_lval(node->lhs);
+      printf("  push [rsp]\n");
+      printf("  pop rax\n");
+      int sz = size_of(node->ty);
+      if (sz == 1) {
+        printf("  movsx rax, byte ptr [rax]\n");
+      } else if (sz == 2) {
+        printf("  movsx rax, word ptr [rax]\n");
+      } else if (sz == 4) {
+        printf("  movsxd rax, dword ptr [rax]\n");
+      } else {
+        assert(sz == 8);
+        printf("  mov rax, [rax]\n");
+      }
+      printf("  push rax\n");
+      dec(node->ty);
+      printf("  pop rdi\n"); // 右辺値がstackのtopに入る
+      printf("  pop rax\n");
+
+      if (node->ty->kind == TY_BOOL) {
+        printf("  cmp rdi, 0\n");
+        printf("  setne dil\n");
+        printf("  movzb rdi, dil\n");
+      }
+
+      if (size_of(node->ty) == 1)
+        printf("  mov [rax], dil\n"); // 右辺を左辺値へ入れる
+      else if (size_of(node->ty) == 2)
+        printf("  mov [rax], di\n"); // raxのアドレスの値をraxにセットする
+      else if (size_of(node->ty) == 4)
+        printf("  mov [rax], edi\n"); // raxのアドレスの値をraxにセットする
+      else
+        printf("  mov [rax], rdi\n"); // 右辺を左辺値へ入れる
+      printf("  push rdi\n");
+      return;
+    }
+    case ND_POST_INC: {
+      gen_lval(node->lhs);
+      printf("  push [rsp]\n");
+      printf("  pop rax\n");
+      int sz = size_of(node->ty);
+      if (sz == 1) {
+        printf("  movsx rax, byte ptr [rax]\n");
+      } else if (sz == 2) {
+        printf("  movsx rax, word ptr [rax]\n");
+      } else if (sz == 4) {
+        printf("  movsxd rax, dword ptr [rax]\n");
+      } else {
+        assert(sz == 8);
+        printf("  mov rax, [rax]\n");
+      }
+      printf("  push rax\n");
+      inc(node->ty);
+      printf("  pop rdi\n"); // 右辺値がstackのtopに入る
+      printf("  pop rax\n");
+
+      if (node->ty->kind == TY_BOOL) {
+        printf("  cmp rdi, 0\n");
+        printf("  setne dil\n");
+        printf("  movzb rdi, dil\n");
+      }
+
+      if (size_of(node->ty) == 1)
+        printf("  mov [rax], dil\n"); // 右辺を左辺値へ入れる
+      else if (size_of(node->ty) == 2)
+        printf("  mov [rax], di\n"); // raxのアドレスの値をraxにセットする
+      else if (size_of(node->ty) == 4)
+        printf("  mov [rax], edi\n"); // raxのアドレスの値をraxにセットする
+      else
+        printf("  mov [rax], rdi\n"); // 右辺を左辺値へ入れる
+      printf("  push rdi\n");
+      dec(node->ty); // 　incした値をstoreした後にdecすることでinc前の値で評価を行う
+      return;
+    }
+    case ND_POST_DEC: {
+      gen_lval(node->lhs);
+      printf("  push [rsp]\n");
+      printf("  pop rax\n");
+      int sz = size_of(node->ty);
+      if (sz == 1) {
+        printf("  movsx rax, byte ptr [rax]\n");
+      } else if (sz == 2) {
+        printf("  movsx rax, word ptr [rax]\n");
+      } else if (sz == 4) {
+        printf("  movsxd rax, dword ptr [rax]\n");
+      } else {
+        assert(sz == 8);
+        printf("  mov rax, [rax]\n");
+      }
+      printf("  push rax\n");
+      dec(node->ty);
+      printf("  pop rdi\n"); // 右辺値がstackのtopに入る
+      printf("  pop rax\n");
+
+      if (node->ty->kind == TY_BOOL) {
+        printf("  cmp rdi, 0\n");
+        printf("  setne dil\n");
+        printf("  movzb rdi, dil\n");
+      }
+
+      if (size_of(node->ty) == 1)
+        printf("  mov [rax], dil\n"); // 右辺を左辺値へ入れる
+      else if (size_of(node->ty) == 2)
+        printf("  mov [rax], di\n"); // raxのアドレスの値をraxにセットする
+      else if (size_of(node->ty) == 4)
+        printf("  mov [rax], edi\n"); // raxのアドレスの値をraxにセットする
+      else
+        printf("  mov [rax], rdi\n"); // 右辺を左辺値へ入れる
+      printf("  push rdi\n");
+      inc(node->ty);
+      return;
+    }
     case ND_ADDR:
       gen_lval(node->lhs);
       return;
