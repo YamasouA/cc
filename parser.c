@@ -563,6 +563,14 @@ static Node *assign() {
   Node *node = equality();
   if (consume("="))
     node = new_node(ND_ASSIGN, node, assign());
+  if (consume("+="))
+    node = new_node(ND_A_ADD, node, assign());
+  if (consume("-="))
+    node = new_node(ND_A_SUB, node, assign());
+  if (consume("*="))
+    node = new_node(ND_A_MUL, node, assign());
+  if (consume("/="))
+    node = new_node(ND_A_DIV, node, assign());
   return node;
 }
 

@@ -279,6 +279,76 @@ void gen(Node *node) {
       inc(node->ty);
       return;
     }
+    case ND_A_ADD:
+    case ND_A_SUB:
+    case ND_A_MUL:
+    case ND_A_DIV: {
+      gen_lval(node->lhs);
+      printf("  push [rsp]\n");
+
+      printf("  pop rax\n");
+      int sz = size_of(node->ty);
+      if (sz == 1) {
+        printf("  movsx rax, byte ptr [rax]\n");
+      } else if (sz == 2) {
+        printf("  movsx rax, word ptr [rax]\n");
+      } else if (sz == 4) {
+        printf("  movsxd rax, dword ptr [rax]\n");
+      } else {
+        assert(sz == 8);
+        printf("  mov rax, [rax]\n");
+      }
+      printf("  push rax\n");
+
+      gen(node->rhs);
+      printf("  pop rdi\n");
+      printf("  pop rax\n");
+
+      switch(node->kind) {
+        case ND_A_ADD:
+          if (node->ty->base)
+            printf("  imul rdi, %d\n", size_of(node->ty->base));
+          printf("  add rax, rdi\n");
+          break;
+        case ND_A_SUB:
+          if (node->ty->base)
+            printf("  imul rdi, %d\n", size_of(node->ty->base));
+          printf("  sub rax, rdi\n");
+          break;
+        case ND_A_MUL:
+          printf("  imul rax, rdi\n");
+          break;
+        case ND_A_DIV:
+          printf("  cqo\n");
+          printf("  idiv rdi\n");
+          break;
+      }
+
+      printf("  push rax\n");
+      printf("  pop rdi\n");
+      printf("  pop rax\n");
+
+      if (node->ty->kind == TY_BOOL) {
+        printf("  cmp rdi, 0\n");
+        printf("  setne dil\n");
+        printf("  movzb rdi, dil\n");
+      }
+
+      sz = size_of(node->ty);
+      if (sz == 1) {
+        printf("  mov [rax], dil\n");
+      } else if (sz == 2) {
+        printf("  mov [rax], di\n");
+      } else if (sz == 4) {
+        printf("  mov [rax], edi\n");
+      } else {
+        assert(sz == 8);
+        printf("  mov [rax], rdi\n");
+      }
+
+      printf("  push rdi\n");
+      return;
+    }
     case ND_ADDR:
       gen_lval(node->lhs);
       return;
