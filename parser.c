@@ -651,7 +651,7 @@ Node *cast() {
   return unary();
 }
 
-// unary = ("+" | "-" | "*" | "&")? cast
+// unary = ("+" | "-" | "*" | "&" | "!")? cast
 //        | ("++" | "--") unary
 //        | "sizeof" expr
 //        | "sizeof" "(" type-name ")" 
@@ -665,6 +665,8 @@ static Node *unary() {
     return new_node(ND_DEREF, cast(), NULL);
   if (consume("&"))
     return new_node(ND_ADDR, cast(), NULL);
+  if (consume("!"))
+    return new_node(ND_NOT, cast(), NULL);
   if (consume("++"))
     return new_node(ND_PRE_INC, unary(), NULL);
   if (consume("--"))
