@@ -12,6 +12,8 @@ void global_var();
 static Node *stmt();
 static Node *expr();
 static Node *assign();
+Node *logor();
+Node *logand();
 static Node *equality();
 static Node *relational();
 static Node *add();
@@ -558,9 +560,9 @@ static Node *expr() {
   return assign();
 }
 
-// assign = equality ("=" assign)?
+// assign = logor ("=" assign)?
 static Node *assign() {
-  Node *node = equality();
+  Node *node = logor();
   if (consume("="))
     node = new_node(ND_ASSIGN, node, assign());
   if (consume("+="))
@@ -571,6 +573,23 @@ static Node *assign() {
     node = new_node(ND_A_MUL, node, assign());
   if (consume("/="))
     node = new_node(ND_A_DIV, node, assign());
+  return node;
+}
+
+// logor = logand ("||" logand)*
+Node *logor() {
+  Node *node = logand();
+  Token *tok;
+  while (consume("||"))
+    node = new_node(ND_LOGOR, node, logand());
+  return node;
+}
+
+// logand = equality ("&&" equality)*
+Node *logand() {
+  Node *node = equality();
+  while (consume("&&"))
+    node = new_node(ND_LOGAND, node, equality());
   return node;
 }
 
