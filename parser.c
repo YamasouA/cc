@@ -338,8 +338,11 @@ void program() {
 Type *read_type_suffix(Type *base) {
   if (!consume("["))
     return base;
-  size_t n = expect_number();
-  expect("]");
+  int n;
+  if (!consume("]")) {
+    n = expect_number();
+    expect("]");
+  }
   base = read_type_suffix(base);
   return array_of(base, n);
 }
@@ -352,6 +355,10 @@ LVarList *read_func_params() {
   char *name = NULL;
   ty = declarator(ty, &name);
   ty = read_type_suffix(ty);
+
+  // array型の引数はポインタとして扱う
+  if (ty->kind == TY_ARRAY)
+    ty = pointer_to(ty->base);
 
   LVarList *head = calloc(1, sizeof(LVarList));
   head->var = push_var(name, ty, true);
