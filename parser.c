@@ -469,6 +469,7 @@ Function *function() {
 //      | "for" "(" (expr? ";" | declaration) expr? ";" expr? ")" stmt
 //      | declaration
 //      | expr ";"
+//      | break ";"
 static Node *stmt() {
   Node *node;
 
@@ -541,6 +542,11 @@ static Node *stmt() {
     node->kind = ND_BLOCK;
     node->body = head.next;
     return node;
+  }
+
+  if (consume("break")) {
+    expect(";");
+    return new_node(ND_BREAK, NULL, NULL);
   }
 
   if (consume("typedef")) {

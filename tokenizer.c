@@ -166,7 +166,7 @@ Token *read_char_literal(Token *cur, char **start) {
 
 static char *starts_with_reserved(char *p) {
   static char *kw[] = {"return", "if", "else", "while", "for",
-                      "sizeof", "struct", "typedef", "enum", "static"};
+                      "sizeof", "struct", "typedef", "enum", "static", "break"};
 
   for (int i = 0; i < sizeof(kw) / sizeof(*kw); i++) {
     int len = strlen(kw[i]);

@@ -137,6 +137,7 @@ typedef enum {
   ND_NOT, // !
   ND_LOGAND, // &&
   ND_LOGOR, // ||
+  ND_BREAK, // break
 } NodeKind;
 
 typedef struct Node Node;
