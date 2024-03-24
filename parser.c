@@ -470,6 +470,7 @@ Function *function() {
 //      | declaration
 //      | expr ";"
 //      | break ";"
+//      | continue ";"
 static Node *stmt() {
   Node *node;
 
@@ -547,6 +548,11 @@ static Node *stmt() {
   if (consume("break")) {
     expect(";");
     return new_node(ND_BREAK, NULL, NULL);
+  }
+
+  if (consume("continue")) {
+    expect(";");
+    return new_node(ND_CONTINUE, NULL, NULL);
   }
 
   if (consume("typedef")) {

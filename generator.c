@@ -61,6 +61,7 @@ void truncate(Type *ty) {
 
 int labelseq;
 int brkseq;
+int contseq;
 char *funcname;
 // charのような1バイトでは上位のビットが0にリセットされない
 char *argreg1[] = {"dil", "sil", "dl", "cl", "r8b", "r9b"};
@@ -436,23 +437,28 @@ void gen(Node *node) {
     case ND_WHILE: {
       int seq = labelseq++;
       int brk = brkseq;
+      int cont = contseq;
       brkseq = seq;
-      printf(".Lbegin%d:\n", seq);
+      contseq = seq;
+      printf(".L.continue.%d:\n", seq);
       gen(node->cond);
       printf("  pop rax\n");
       printf("  cmp rax, 0\n");
       printf("  je  .L.break.%d\n", seq);
       gen(node->then);
-      printf("  jmp .Lbegin%d\n", seq);
+      printf("  jmp .L.continue.%d\n", seq);
       printf(".L.break.%d:\n", seq);
 
       brkseq = brk;
+      contseq = cont;
       return;
     }
     case ND_FOR: {
       int seq = labelseq++;
       int brk = brkseq;
+      int cont = contseq;
       brkseq = seq;
+      contseq = seq;
 
       if (node->init)
         gen(node->init);
@@ -464,12 +470,14 @@ void gen(Node *node) {
         printf("  je  .L.break.%d\n", seq);
       }
       gen(node->then);
+      printf(".L.continue.%d:\n", seq);
       if (node->inc)
         gen(node->inc);
       printf("  jmp .Lbegin%d\n", seq);
       printf(".L.break.%d:\n", seq);
 
       brkseq = brk;
+      contseq = cont;
       return;
     }
     case ND_BLOCK:
@@ -481,6 +489,11 @@ void gen(Node *node) {
       if (brkseq == 0)
         error("breakエラー");
       printf("  jmp .L.break.%d\n", brkseq);
+      return;
+    case ND_CONTINUE:
+      if (contseq == 0)
+        error("continueエラー");
+      printf("  jmp .L.continue.%d\n", contseq);
       return;
     case ND_FUNC: {
       Node *cur = node->args;
