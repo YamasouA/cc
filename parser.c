@@ -13,6 +13,7 @@ void global_var();
 static Node *stmt();
 static Node *expr();
 static Node *assign();
+Node *conditional();
 Node *logor();
 Node *logand();
 static Node *equality();
@@ -619,9 +620,9 @@ static Node *expr() {
   return assign();
 }
 
-// assign = logor ("=" assign)?
+// assign = conditional ("=" assign)?
 static Node *assign() {
-  Node *node = logor();
+  Node *node = conditional();
   if (consume("="))
     node = new_node(ND_ASSIGN, node, assign());
   if (consume("+="))
@@ -633,6 +634,20 @@ static Node *assign() {
   if (consume("/="))
     node = new_node(ND_A_DIV, node, assign());
   return node;
+}
+
+// conditional = logor ("?" expr ":" conditonal)?
+Node *conditional() {
+  Node *node = logor();
+  if (!consume("?"))
+    return node;
+  
+  Node *ternary = new_node(ND_TERNARY, NULL, NULL);
+  ternary->cond = node;
+  ternary->then = expr();
+  expect(":");
+  ternary->els = conditional();
+  return ternary;
 }
 
 // logor = logand ("||" logand)*

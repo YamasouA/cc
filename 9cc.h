@@ -141,6 +141,7 @@ typedef enum {
   ND_CONTINUE, // continue
   ND_SWITCH, // switch 
   ND_CASE, // case
+  ND_TERNARY, // ?:
 } NodeKind;
 
 typedef struct Node Node;
