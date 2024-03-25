@@ -4,6 +4,7 @@ LVarList *locals;
 LVarList *globals;
 LVarList *scope;
 TagScope *tag_scope;
+Node *current_switch;
 
 Program *code;
 
@@ -471,6 +472,9 @@ Function *function() {
 //      | expr ";"
 //      | break ";"
 //      | continue ";"
+//      | "switch" "(" expr ")" stmt
+//      | "case" num ":" stmt
+//      | "default" ":" stmt
 static Node *stmt() {
   Node *node;
 
@@ -553,6 +557,42 @@ static Node *stmt() {
   if (consume("continue")) {
     expect(";");
     return new_node(ND_CONTINUE, NULL, NULL);
+  }
+
+  if (consume("switch")) {
+    Node *node = new_node(ND_SWITCH, NULL, NULL);
+    expect("(");
+    node->cond = expr();
+    expect(")");
+
+    Node *sw = current_switch;
+    current_switch = node;
+    node->then = stmt();
+    current_switch = sw;
+    return node;
+  }
+
+  if (consume("case")) {
+    if (!current_switch)
+      error("switch-case エラー");
+    int val = expect_number();
+    expect(":");
+
+    Node *node = new_node(ND_CASE, stmt(), NULL);
+    node->val = val;
+    node->case_next = current_switch->case_next;
+    current_switch->case_next = node;
+    return node;
+  }
+
+  if (consume("default")) {
+    if (!current_switch)
+      error("switch-case エラー(default)");
+    expect(":");
+
+    Node *node = new_node(ND_CASE, stmt(), NULL);
+    current_switch->default_case = node;
+    return node;
   }
 
   if (consume("typedef")) {

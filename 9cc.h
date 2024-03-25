@@ -139,6 +139,8 @@ typedef enum {
   ND_LOGOR, // ||
   ND_BREAK, // break
   ND_CONTINUE, // continue
+  ND_SWITCH, // switch 
+  ND_CASE, // case
 } NodeKind;
 
 typedef struct Node Node;
@@ -160,6 +162,11 @@ struct Node {
 
   // Block or statement expression
   Node *body;
+
+  Node *case_next;
+  Node *default_case;
+  int case_label;
+  int case_end_label;
 
   // 関数名
   char *funcname;
