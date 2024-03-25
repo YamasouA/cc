@@ -32,6 +32,7 @@ Type *struct_decl();
 Type *enum_decl();
 bool is_type();
 Type *declarator(Type *ty, char **name);
+long const_expr();
 
 TagScope *find_tag(Token *tok) {
   for (TagScope *sc = tag_scope; sc; sc = sc->next)
@@ -191,7 +192,7 @@ Type *abstract_declarator(Type *ty) {
 
 // enum_decl = "enum" ident
 //           | "enum" ident? "{" enum-list? "}"
-// enum-list = ident ("=" num)? ("," ident ("=" num)?)* ","?
+// enum-list = ident ("=" const-expr)? ("," ident ("=" const-expr)?)* ","?
 Type *enum_decl() {
   expect("enum");
   Type *ty = enum_type();
@@ -214,7 +215,7 @@ Type *enum_decl() {
   for (;;) {
     char *name = expect_ident();
     if (consume("="))
-      cnt = expect_number();
+      cnt = const_expr();
     
     LVar *sc = push_var(name, ty, true); // typeにセットしてるが本当はセットしたくない
     sc->enum_ty = ty;
@@ -233,6 +234,43 @@ Type *enum_decl() {
   if (tag)
     push_tag_scope(tag, ty);
   return ty;
+}
+
+long eval(Node *node) {
+  switch (node->kind) {
+  case ND_ADD:
+    return eval(node->lhs) + eval(node->rhs);
+  case ND_SUB:
+    return eval(node->lhs) - eval(node->rhs);
+  case ND_MUL:
+    return eval(node->lhs) * eval(node->rhs);
+  case ND_DIV:
+    return eval(node->lhs) / eval(node->rhs);
+  case ND_EQ:
+    return eval(node->lhs) == eval(node->rhs);
+  case ND_NE:
+    return eval(node->lhs) != eval(node->rhs);
+  case ND_LT:
+    return eval(node->lhs) < eval(node->rhs);
+  case ND_LE:
+    return eval(node->lhs) <= eval(node->rhs);
+  case ND_TERNARY:
+    return eval(node->cond) ? eval(node->then) : eval(node->els);
+  case ND_NOT:
+    return !eval(node->lhs);
+  case ND_LOGAND:
+    return eval(node->lhs) && eval(node->rhs);
+  case ND_LOGOR:
+    return eval(node->lhs) || eval(node->rhs);
+  case ND_NUM:
+    return node->val;
+  }
+
+  error("evalエラー");
+}
+
+long  const_expr() {
+  return eval(conditional());
 }
 
 // struct-decl = "struct" ident
@@ -336,13 +374,13 @@ void program() {
   code = prog;
 }
 
-// type-suffix = ("[" num "]" type-suffix)?
+// type-suffix = ("[" const-expr? "]" type-suffix)?
 Type *read_type_suffix(Type *base) {
   if (!consume("["))
     return base;
   int n;
   if (!consume("]")) {
-    n = expect_number();
+    n = const_expr();
     expect("]");
   }
   base = read_type_suffix(base);
@@ -576,7 +614,7 @@ static Node *stmt() {
   if (consume("case")) {
     if (!current_switch)
       error("switch-case エラー");
-    int val = expect_number();
+    int val = const_expr();
     expect(":");
 
     Node *node = new_node(ND_CASE, stmt(), NULL);
