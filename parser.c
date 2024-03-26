@@ -453,6 +453,21 @@ Node *new_desg_node(LVar *var, Designator *desg, Node *rhs) {
   return new_node(ND_EXPR_STMT, node, NULL);
 }
 
+Node *lvar_init_zero(Node *cur, LVar *var, Type *ty, Designator *desg) {
+  if (ty->kind == TY_ARRAY) {
+    for (int i = 0; i < ty->array_size; i++) {
+      Designator desg2 = {desg, i++};
+      cur = lvar_init_zero(cur, var, ty->base, &desg2);
+    }
+    return cur;
+  }
+
+  cur->next = new_desg_node(var, desg, new_node_num(0));
+  return cur->next;
+}
+
+// lvar-iniutializer = assign
+//                    | "{" lvar-initializer ("," lvar-initializer)* ","? "}"
 // x[2][3] = {{1, 2, 3}, {4, 5, 6}}
 // x[0][0] = 1
 // x[0][1] = 2
@@ -460,6 +475,7 @@ Node *new_desg_node(LVar *var, Designator *desg, Node *rhs) {
 // x[1][0] = 4
 // x[1][1] = 5
 // x[1][2] = 6
+// 初期化リストが0より小さければ0埋めする
 Node *lvar_initializer(Node *cur, LVar *var, Type *ty, Designator *desg) {
   if (!consume("{")) {
     cur->next = new_desg_node(var, desg, assign());
@@ -475,6 +491,12 @@ Node *lvar_initializer(Node *cur, LVar *var, Type *ty, Designator *desg) {
     } while (!peek_end() && consume(","));
 
     expect_end();
+
+    // arrayの残りを0で初期化
+    while (i < ty->array_size) {
+      Designator desg2 = {desg, i++};
+      cur = lvar_init_zero(cur, var, ty->base, &desg2);
+    }
     return cur;
   }
 
