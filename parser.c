@@ -435,6 +435,7 @@ void global_var() {
 }
 
 Node *new_desg_node2(LVar *var, Designator *desg) {
+  // indexがないのであれば変数自体を指すnodeを返す
   if (!desg) {
     Node *node = calloc(1, sizeof(Node));
     node->kind = ND_LVAR;
@@ -443,6 +444,7 @@ Node *new_desg_node2(LVar *var, Designator *desg) {
   }
 
   Node *node = new_desg_node2(var, desg->next);
+  // x[y] == *(x+y) これを表現する
   node = new_node(ND_ADD, node, new_node_num(desg->idx));
   return new_node(ND_DEREF, node, NULL);
 }
@@ -476,7 +478,29 @@ Node *lvar_init_zero(Node *cur, LVar *var, Type *ty, Designator *desg) {
 // x[1][1] = 5
 // x[1][2] = 6
 // 初期化リストが0より小さければ0埋めする
+// 文字列の初期化は文字の配列として捉える
 Node *lvar_initializer(Node *cur, LVar *var, Type *ty, Designator *desg) {
+  if (ty->kind == TY_ARRAY && ty->base->kind == TY_CHAR && token->kind == TK_STR) {
+    Token *tok = token;
+    token = token->next;
+
+    int len = (ty->array_size < tok->len) ? ty->array_size : tok->len;
+    int i;
+
+    for (i = 0; i < len; i++) {
+      Designator desg2 = {desg, i};
+      Node *rhs = new_node_num(tok->str[i]);
+      cur->next = new_desg_node(var, &desg2, rhs);
+      cur = cur->next;
+    }
+
+    for (; i < ty->array_size; i++) {
+      Designator desg2 = {desg, i};
+      cur = lvar_init_zero(cur, var, ty->base, &desg2);
+    }
+    return cur;
+  }
+
   if (!consume("{")) {
     cur->next = new_desg_node(var, desg, assign());
     return cur->next;
