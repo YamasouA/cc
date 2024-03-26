@@ -33,6 +33,9 @@ Type *enum_decl();
 bool is_type();
 Type *declarator(Type *ty, char **name);
 long const_expr();
+bool peek_end();
+void expect_end();
+Node *new_desg_node(LVar *var, Designator *desg, Node *rhs);
 
 TagScope *find_tag(Token *tok) {
   for (TagScope *sc = tag_scope; sc; sc = sc->next)
@@ -431,7 +434,54 @@ void global_var() {
   push_scope(var);
 }
 
-// declaration = basetype ident ("[" num "]")* ("=" expr) ";"
+Node *new_desg_node2(LVar *var, Designator *desg) {
+  if (!desg) {
+    Node *node = calloc(1, sizeof(Node));
+    node->kind = ND_LVAR;
+    node->var = var;
+    return node;
+  }
+
+  Node *node = new_desg_node2(var, desg->next);
+  node = new_node(ND_ADD, node, new_node_num(desg->idx));
+  return new_node(ND_DEREF, node, NULL);
+}
+
+Node *new_desg_node(LVar *var, Designator *desg, Node *rhs) {
+  Node *lhs = new_desg_node2(var, desg);
+  Node *node = new_node(ND_ASSIGN, lhs, rhs);
+  return new_node(ND_EXPR_STMT, node, NULL);
+}
+
+// x[2][3] = {{1, 2, 3}, {4, 5, 6}}
+// x[0][0] = 1
+// x[0][1] = 2
+// x[0][2] = 3
+// x[1][0] = 4
+// x[1][1] = 5
+// x[1][2] = 6
+Node *lvar_initializer(Node *cur, LVar *var, Type *ty, Designator *desg) {
+  if (!consume("{")) {
+    cur->next = new_desg_node(var, desg, assign());
+    return cur->next;
+  }
+
+  if (ty->kind == TY_ARRAY) {
+    int i = 0;
+
+    do {
+      Designator desg2 = {desg, i++};
+      cur = lvar_initializer(cur, var, ty->base, &desg2);
+    } while (!peek_end() && consume(","));
+
+    expect_end();
+    return cur;
+  }
+
+  error("配列初期化エラー");
+}
+
+// declaration = basetype ident type-suffix ("=" lvar-initializer)? ";"
 //              | basetype; // struct t {...}; のようなケース
 Node *declaration() {
   Node *node = calloc(1, sizeof(Node));
@@ -459,13 +509,12 @@ Node *declaration() {
     return  node;
   }
   expect("=");
-  node->kind = ND_ASSIGN;
-  node->lhs = calloc(1, sizeof(Node));
-  node->lhs->kind = ND_LVAR;
-  node->lhs->var = var;
-  node->rhs = expr();
+  Node head;
+  head.next = NULL;
+  lvar_initializer(&head, var, var->ty, NULL);
   expect(";");
-  node = new_node(ND_EXPR_STMT, node, NULL);
+  node = new_node(ND_BLOCK, NULL, NULL);
+  node->body = head.next;
   return node;
 }
 
@@ -499,6 +548,21 @@ Function *function() {
   fn->node = head.next;
   fn->locals = locals;
   return fn;
+}
+
+bool peek_end() {
+  Token *tok = token;
+  bool ret = consume("}") || (consume(",") && consume("}"));
+  token = tok;
+  return ret;
+}
+
+void expect_end() {
+  Token *tok = token;
+  if (consume(",") && consume("}"))
+    return;
+  token = tok;
+  expect("}");
 }
 
 // stmt = expr ";"

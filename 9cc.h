@@ -182,6 +182,11 @@ struct Node {
   Member *member;
 };
 
+typedef struct Designator Designator;
+struct Designator {
+  Designator *next;
+  int idx;
+};
 
 typedef struct Function Function;
 struct Function {
