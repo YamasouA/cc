@@ -381,13 +381,17 @@ void program() {
 Type *read_type_suffix(Type *base) {
   if (!consume("["))
     return base;
-  int n;
+  int n = 0;
+  bool is_incomplete = true;
   if (!consume("]")) {
     n = const_expr();
+    is_incomplete = false;
     expect("]");
   }
   base = read_type_suffix(base);
-  return array_of(base, n);
+  base = array_of(base, n);
+  base->is_incomplete = is_incomplete;
+  return base;
 }
 
 LVarList *read_func_params() {
@@ -483,6 +487,11 @@ Node *lvar_initializer(Node *cur, LVar *var, Type *ty, Designator *desg) {
   if (ty->kind == TY_ARRAY && ty->base->kind == TY_CHAR && token->kind == TK_STR) {
     Token *tok = token;
     token = token->next;
+    
+    if (ty->is_incomplete) {
+      ty->array_size = tok->len + 1; // \0分
+      ty->is_incomplete = false;
+    }
 
     int len = (ty->array_size < tok->len) ? ty->array_size : tok->len;
     int i;
@@ -498,6 +507,7 @@ Node *lvar_initializer(Node *cur, LVar *var, Type *ty, Designator *desg) {
       Designator desg2 = {desg, i};
       cur = lvar_init_zero(cur, var, ty->base, &desg2);
     }
+
     return cur;
   }
 
@@ -510,6 +520,7 @@ Node *lvar_initializer(Node *cur, LVar *var, Type *ty, Designator *desg) {
     int i = 0;
 
     do {
+      // 配列が複数次元の時はネストしてるので次元ごとにdesgを分ける
       Designator desg2 = {desg, i++};
       cur = lvar_initializer(cur, var, ty->base, &desg2);
     } while (!peek_end() && consume(","));
@@ -520,6 +531,11 @@ Node *lvar_initializer(Node *cur, LVar *var, Type *ty, Designator *desg) {
     while (i < ty->array_size) {
       Designator desg2 = {desg, i++};
       cur = lvar_init_zero(cur, var, ty->base, &desg2);
+    }
+    
+    if (ty->is_incomplete) {
+      ty->array_size = i;
+      ty->is_incomplete = false;
     }
     return cur;
   }

@@ -34,6 +34,7 @@ struct Type {
   int align;
   Type *return_ty; // 関数の戻り値の型
   bool is_static;
+  bool is_incomplete;
 };
 
 typedef struct TagScope TagScope;
