@@ -189,7 +189,8 @@ struct Node {
 typedef struct Designator Designator;
 struct Designator {
   Designator *next;
-  int idx;
+  int idx; // arrray
+  Member *mem; // struct
 };
 
 typedef struct Function Function;

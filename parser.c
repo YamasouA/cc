@@ -456,6 +456,7 @@ void global_var() {
   push_scope(var);
 }
 
+// 
 Node *new_desg_node2(LVar *var, Designator *desg) {
   // indexがないのであれば変数自体を指すnodeを返す
   if (!desg) {
@@ -466,6 +467,12 @@ Node *new_desg_node2(LVar *var, Designator *desg) {
   }
 
   Node *node = new_desg_node2(var, desg->next);
+
+  if (desg->mem) {
+    node = new_node(ND_MEMBER, node, NULL);
+    node->member_name = desg->mem->name;
+    return node;
+  }
   // x[y] == *(x+y) これを表現する
   node = new_node(ND_ADD, node, new_node_num(desg->idx));
   return new_node(ND_DEREF, node, NULL);
@@ -480,7 +487,7 @@ Node *new_desg_node(LVar *var, Designator *desg, Node *rhs) {
 Node *lvar_init_zero(Node *cur, LVar *var, Type *ty, Designator *desg) {
   if (ty->kind == TY_ARRAY) {
     for (int i = 0; i < ty->array_size; i++) {
-      Designator desg2 = {desg, i++};
+      Designator desg2 = {desg, i++, NULL};
       cur = lvar_init_zero(cur, var, ty->base, &desg2);
     }
     return cur;
@@ -499,9 +506,13 @@ Node *lvar_init_zero(Node *cur, LVar *var, Type *ty, Designator *desg) {
 // x[1][0] = 4
 // x[1][1] = 5
 // x[1][2] = 6
+//
+// struct { int a; int b; } x = {1, 2}の時に x.a=1, x.b=2
+// 
 // 初期化リストが0より小さければ0埋めする
 // 文字列の初期化は文字の配列として捉える
 Node *lvar_initializer(Node *cur, LVar *var, Type *ty, Designator *desg) {
+  // 文字列の初期化
   if (ty->kind == TY_ARRAY && ty->base->kind == TY_CHAR && token->kind == TK_STR) {
     Token *tok = token;
     token = token->next;
@@ -515,20 +526,21 @@ Node *lvar_initializer(Node *cur, LVar *var, Type *ty, Designator *desg) {
     int i;
 
     for (i = 0; i < len; i++) {
-      Designator desg2 = {desg, i};
+      Designator desg2 = {desg, i, NULL};
       Node *rhs = new_node_num(tok->str[i]);
       cur->next = new_desg_node(var, &desg2, rhs);
       cur = cur->next;
     }
 
     for (; i < ty->array_size; i++) {
-      Designator desg2 = {desg, i};
+      Designator desg2 = {desg, i, NULL};
       cur = lvar_init_zero(cur, var, ty->base, &desg2);
     }
 
     return cur;
   }
 
+  // 初期化部分を処理
   if (!consume("{")) {
     cur->next = new_desg_node(var, desg, assign());
     return cur->next;
@@ -539,7 +551,7 @@ Node *lvar_initializer(Node *cur, LVar *var, Type *ty, Designator *desg) {
 
     do {
       // 配列が複数次元の時はネストしてるので次元ごとにdesgを分ける
-      Designator desg2 = {desg, i++};
+      Designator desg2 = {desg, i++, NULL};
       cur = lvar_initializer(cur, var, ty->base, &desg2);
     } while (!peek_end() && consume(","));
 
@@ -547,13 +559,31 @@ Node *lvar_initializer(Node *cur, LVar *var, Type *ty, Designator *desg) {
 
     // arrayの残りを0で初期化
     while (i < ty->array_size) {
-      Designator desg2 = {desg, i++};
+      Designator desg2 = {desg, i++, NULL};
       cur = lvar_init_zero(cur, var, ty->base, &desg2);
     }
     
     if (ty->is_incomplete) {
       ty->array_size = i;
       ty->is_incomplete = false;
+    }
+    return cur;
+  }
+
+  if (ty->kind == TY_STRUCT) {
+    Member *mem = ty->members;
+
+    do {
+      Designator desg2 = {desg, 0, mem};
+      cur = lvar_initializer(cur, var, mem->ty, &desg2);
+      mem = mem->next;
+    } while (!peek_end() && consume(","));
+
+    expect_end();
+
+    for (; mem; mem = mem->next) {
+      Designator desg2 = {desg, 0, mem};
+      cur = lvar_init_zero(cur, var, mem->ty, &desg2);
     }
     return cur;
   }
