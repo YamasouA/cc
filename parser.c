@@ -5,7 +5,7 @@ LVarList *globals;
 LVarList *scope;
 TagScope *tag_scope;
 Node *current_switch;
-
+int scope_depth;
 Program *code;
 
 static Function *function();
@@ -38,9 +38,10 @@ void expect_end();
 Node *new_desg_node(LVar *var, Designator *desg, Node *rhs);
 
 TagScope *find_tag(Token *tok) {
-  for (TagScope *sc = tag_scope; sc; sc = sc->next)
+  for (TagScope *sc = tag_scope; sc; sc = sc->next) {
     if (strlen(sc->name) == tok->len && !memcmp(tok->str, sc->name, tok->len))
       return sc;
+  }
   return NULL;
 }
 
@@ -48,6 +49,7 @@ void push_tag_scope(Token *tok, Type *ty) {
   TagScope *sc = calloc(1, sizeof(TagScope));
   sc->next = tag_scope;
   sc->name = strndup(tok->str, tok->len);
+  sc->depth = scope_depth;
   sc->ty = ty;
   tag_scope = sc;
 }
@@ -73,6 +75,7 @@ LVarList *push_scope(LVar *var) {
   LVarList *sc = calloc(1, sizeof(LVarList));
   sc->var = var;
   sc->next = scope;
+  sc->depth = scope_depth;
   scope = sc;
   return sc;
 } 
@@ -276,23 +279,41 @@ long  const_expr() {
   return eval(conditional());
 }
 
-// struct-decl = "struct" ident
-//             | "struct" ident? "{" struct-member "}"
+// struct-decl = "struct" ident? ("{" struct-member "}")
 Type *struct_decl() {
   Token *tag = consume_ident();
   // 宣言したstructを利用するケース
   if (tag && !peek("{")) {
     TagScope *sc = find_tag(tag);
-    if (!sc)
-      error("struct decl error");
+    if (!sc) {
+      Type *ty = struct_type();
+      push_tag_scope(tag, ty);
+      return ty;
+    }
     if (sc->ty->kind != TY_STRUCT)
       error("struct decl error2");
     return sc->ty;
   }
 
-  // Memberを読む
-  expect("{");
+  // sturct *foo;みたいなコードが書ける
+  if (!consume("{"))
+    return struct_type();
 
+  TagScope *sc = find_tag(tag);
+  Type *ty;
+
+  if (sc && sc->depth == scope_depth) {
+    if (sc->ty->kind != TY_STRUCT)
+      error("struct の再宣言");
+    ty = sc->ty;
+  } else {
+    //　struct T { struct T *next; }のように自己参照型に対応
+    ty = struct_type();
+    if (tag)
+      push_tag_scope(tag, ty);
+  }
+
+  // Memberを読む
   Member head;
   head.next = NULL;
   Member *cur = &head;
@@ -302,8 +323,6 @@ Type *struct_decl() {
     cur = cur->next;
   }
 
-  Type *ty = calloc(1, sizeof(Type));
-  ty->kind = TY_STRUCT;
   ty->members = head.next;
 
   int offset = 0;
@@ -316,8 +335,7 @@ Type *struct_decl() {
       ty->align = mem->ty->align;
   }
 
-  if (tag)
-    push_tag_scope(tag, ty);
+  ty->is_incomplete = false;
 
   return ty;
 }
@@ -665,6 +683,7 @@ static Node *stmt() {
       expect("(");
       LVarList *sc1 = scope;
       TagScope *sc2 = tag_scope;
+      ++scope_depth;
 
       if (!consume(";")) {
         if (is_type()) {
@@ -686,6 +705,7 @@ static Node *stmt() {
 
       scope = sc1;
       tag_scope = sc2;
+      --scope_depth;
       return node;
   } else if (consume("while")) {
       node = calloc(1, sizeof(Node));
@@ -702,12 +722,14 @@ static Node *stmt() {
     Node *cur = &head;
     LVarList *sc = scope; // ブロックに入るまでの情報を保持してブロック間の変数を一気に削除できる
     TagScope *sc2 = tag_scope; // ブロックに入るまでの情報を保持してブロック間の変数を一気に削除できる
+    ++scope_depth;
     while (!consume("}")) {
       cur->next = stmt();
       cur = cur->next;
     }
     scope = sc;
     tag_scope = sc2;
+    --scope_depth;
     node = calloc(1, sizeof(Node));
     node->kind = ND_BLOCK;
     node->body = head.next;
@@ -1000,11 +1022,12 @@ Node *func_args() {
 Node *stmt_expr() {
   Node * node = calloc(1, sizeof(Node));
   // stmtがからの時にstmt()呼び出しないでexpect_numberに引っかかってエラーで止まる
+  LVarList *sc = scope;
+  TagScope *sc2 = tag_scope;
+  ++scope_depth;
   node->body = stmt();
   node->kind = ND_STMT_EXPR;
   Node *cur = node->body;
-  LVarList *sc = scope;
-  TagScope *sc2 = tag_scope;
   while (!consume("}")) {
     cur->next = stmt();
     cur = cur->next;
@@ -1015,6 +1038,7 @@ Node *stmt_expr() {
   *cur = *cur->lhs; // コード生成時にND_BLOCKと処理を揃えるために最後の処理をnode自体に移す
   scope = sc;
   tag_scope = sc2;
+  --scope_depth;
   return node;
 }
 

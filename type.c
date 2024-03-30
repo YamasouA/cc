@@ -77,6 +77,8 @@ Type *array_of(Type *base, int size) {
 Type *struct_type() {
   Type *ty = calloc(1, sizeof(Type));
   ty->kind = TY_STRUCT;
+  ty->align = 1;
+  ty->is_incomplete = true;
   return ty;
 }
 

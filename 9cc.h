@@ -42,6 +42,7 @@ struct TagScope {
   TagScope *next;
   char *name;
   Type *ty;
+  int depth;
 };
 
 
@@ -64,6 +65,7 @@ struct LVar {
   int enum_val; // enumの値
   bool is_local; // local or global
   char *static_name; // local or global
+  int depth;
 
   char *contents;
   int cont_len;
@@ -74,6 +76,7 @@ typedef struct LVarList LVarList;
 struct LVarList {
   LVar *var;
   LVarList *next;
+  int depth;
 };
 
 // ローカル変数

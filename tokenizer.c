@@ -47,8 +47,9 @@ bool peek(char *op) {
 
 // 次のトークンが期待している記号の時はトークンを1つ読み進めてtrueを返す
 Token *consume_ident() {
-  if (token->kind != TK_IDENT)
+  if (token->kind != TK_IDENT) {
     return NULL;
+  }
   Token *tmp = token;
   token = token->next;
   return tmp;
@@ -246,7 +247,7 @@ Token *tokenize() {
       continue;
     }
 
-    if ('a' <= *p && *p <= 'z' || *p == '_') {
+    if (('a' <= *p && *p <= 'z') || *p == '_' || ('A' <= *p && *p <= 'Z')) {
       cur = new_token(TK_IDENT, cur, p, 0);
       char *q = p;
       while (is_alnum(*p))
@@ -262,7 +263,6 @@ Token *tokenize() {
       cur->len = p - q;
       continue;
     }
-
     error_at(p, "トークナイズできません");
   }
 
