@@ -673,10 +673,16 @@ void emit_data() {
   for (LVarList *vl = code->globals; vl; vl = vl->next) {
     LVar *var = vl->var;
     printf("%s:\n", var->name);
-    if (!var->contents) {
+    if (!var->initializer) {
       printf("  .zero %d\n", size_of(var->ty));
+    } else if (var->initializer->label) {
+      printf("  .quad \"%s\"\n", var->initializer->label);
+    } else if (var->initializer->contents) {
+      printf("  .string \"%s\"\n", var->initializer->contents);
+    } else if (var->initializer->sz == 1) {
+      printf("  .byte %ld\n", var->initializer->val);
     } else {
-      printf("  .string \"%s\"\n", var->contents);
+      printf("  .%dbyte %ld\n", var->initializer->sz, var->initializer->val);
     }
     
   }

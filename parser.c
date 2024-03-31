@@ -36,7 +36,7 @@ long const_expr();
 bool peek_end();
 void expect_end();
 Node *new_desg_node(LVar *var, Designator *desg, Node *rhs);
-
+long eval(Node *node);
 TagScope *find_tag(Token *tok) {
   for (TagScope *sc = tag_scope; sc; sc = sc->next) {
     if (strlen(sc->name) == tok->len && !memcmp(tok->str, sc->name, tok->len))
@@ -445,15 +445,60 @@ LVarList *read_func_params() {
   return head;
 }
 
-// global-var = basetype ident ("[" num "]")* ";"
+Initializer *new_init_val(Initializer *cur, int sz, int val) {
+  Initializer *init = calloc(1, sizeof(Initializer));
+  init->sz = sz;
+  init->val = val;
+  cur->next = init;
+  return init;
+}
+
+Initializer *new_init_label(Initializer *cur, char *label) {
+  Initializer *init = calloc(1, sizeof(Initializer));
+  init->label = label;
+  cur->next = init;
+  return init;
+}
+
+Initializer *gvar_init_string(char *p , int len) {
+  Initializer *init = calloc(1, sizeof(Initializer));
+  init->contents = p;
+  init->sz = len;
+  return init;
+}
+
+Initializer *gvar_initializer(Initializer *cur, Type *ty) {
+  Node *expr = conditional();
+
+  if (expr->kind == ND_ADDR) {
+    if (expr->lhs->kind != ND_LVAR)
+      error("グローバル変数初期化エラー");
+    return new_init_label(cur, expr->lhs->var->name);
+  }
+
+  if (expr->kind == ND_LVAR && expr->var->ty->kind == TY_ARRAY)
+    return new_init_label(cur, expr->var->name);
+  
+  return new_init_val(cur, size_of(ty), eval(expr));
+}
+
+// global-var = basetype ident type-suffix ("=" gvar-initializer)? ";"
 void global_var() {
   Type *ty = basetype();
   char *name = NULL;
   ty = declarator(ty, &name);
   ty = read_type_suffix(ty);
-  expect(";");
   LVar *var = push_var(name, ty, false);
   push_scope(var);
+
+  if (consume("=")) {
+    Initializer head;
+    head.next = NULL;
+    gvar_initializer(&head, ty);
+    var->initializer = head.next;
+  }
+
+  expect(";");
 }
 
 // 
@@ -1123,8 +1168,7 @@ static Node *primary() {
     Type *ty = array_of(char_type(), token->len + 1);
     // STRは参照する必要がないためpush_scopeが不要
     LVar *var = push_var(create_varname(), ty, false);
-    var->contents = strndup(token->str, token->len);
-    var->cont_len = token->len;
+    var->initializer = gvar_init_string(strndup(token->str, token->len), token->len);
     Node *node = calloc(1, sizeof(Node));
     node->kind = ND_LVAR;
     node->var = var;

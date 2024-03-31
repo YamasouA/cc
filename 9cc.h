@@ -11,6 +11,7 @@
 
 typedef struct Type Type;
 typedef struct Member Member;
+typedef struct Initializer Initializer;
 
 typedef enum {
   TY_SHORT,
@@ -67,8 +68,7 @@ struct LVar {
   char *static_name; // local or global
   int depth;
 
-  char *contents;
-  int cont_len;
+  Initializer *initializer;
   int val;
 };
 
@@ -77,6 +77,18 @@ struct LVarList {
   LVar *var;
   LVarList *next;
   int depth;
+};
+
+struct Initializer {
+  Initializer *next;
+
+  // constant expression
+  int sz;
+  char *contents;
+  long val;
+
+  // 他のグローバル変数を参照する
+  char *label;
 };
 
 // ローカル変数
