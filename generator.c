@@ -675,16 +675,19 @@ void emit_data() {
     printf("%s:\n", var->name);
     if (!var->initializer) {
       printf("  .zero %d\n", size_of(var->ty));
-    } else if (var->initializer->label) {
-      printf("  .quad \"%s\"\n", var->initializer->label);
-    } else if (var->initializer->contents) {
-      printf("  .string \"%s\"\n", var->initializer->contents);
-    } else if (var->initializer->sz == 1) {
-      printf("  .byte %ld\n", var->initializer->val);
-    } else {
-      printf("  .%dbyte %ld\n", var->initializer->sz, var->initializer->val);
     }
     
+    for (Initializer *init = var->initializer; init; init = init->next) {
+      if (init->label) {
+        printf("  .quad \"%s\"\n", init->label);
+      } else if (init->contents) {
+        printf("  .string \"%s\"\n", init->contents);
+      } else if (init->sz == 1) {
+        printf("  .byte %ld\n", init->val);
+      } else {
+        printf("  .%dbyte %ld\n", init->sz, init->val);
+      }
+    }
   }
 }
 

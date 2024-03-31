@@ -460,6 +460,12 @@ Initializer *new_init_label(Initializer *cur, char *label) {
   return init;
 }
 
+Initializer *new_init_zero(Initializer *cur, int nbytes) {
+  for (int i = 0; i < nbytes; i++)
+    cur = new_init_val(cur, 1, 0);
+  return cur;
+}
+
 Initializer *gvar_init_string(char *p , int len) {
   Initializer *init = calloc(1, sizeof(Initializer));
   init->contents = p;
@@ -467,7 +473,66 @@ Initializer *gvar_init_string(char *p , int len) {
   return init;
 }
 
+Initializer *emit_struct_padding(Initializer *cur, Type *parent, Member *mem) {
+  int end = mem->offset + size_of(mem->ty);
+
+  // メンバー間のパディングで0を埋める
+  int padding;
+  if (mem->next)
+    padding = mem->next->offset - end;
+  else
+    padding = size_of(parent) - end;
+
+  if (padding)
+    cur = new_init_zero(cur, padding);
+  return cur;
+}
+
 Initializer *gvar_initializer(Initializer *cur, Type *ty) {
+  if (consume("{")) {
+    if (ty->kind == TY_ARRAY) {
+      int i = 0;
+
+      do {
+        cur = gvar_initializer(cur, ty->base);
+        i++;
+      } while (!peek_end() && consume(","));
+
+      expect_end();
+
+      // 残りを0埋めする
+      if (i < ty->array_size)
+        cur = new_init_zero(cur, size_of(ty->base) * (ty->array_size - i));
+      
+      if (ty->is_incomplete) {
+        ty->array_size = i;
+        ty->is_incomplete = false;
+      }
+
+      return cur;
+    }
+
+    if (ty->kind == TY_STRUCT) {
+      Member *mem = ty->members;
+      
+      do {
+        cur = gvar_initializer(cur, mem->ty);
+        cur = emit_struct_padding(cur, ty, mem);
+        mem = mem->next;
+      } while (!peek_end() && consume(","));
+
+      expect_end();
+
+      if (mem) {
+        int sz = size_of(ty) - mem->offset;
+        if (sz)
+          cur = new_init_zero(cur, sz);
+      }
+      return cur;
+    }
+
+    error("グローバル変数初期化エラー2");
+  }
   Node *expr = conditional();
 
   if (expr->kind == ND_ADDR) {
