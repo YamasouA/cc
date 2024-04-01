@@ -37,6 +37,8 @@ bool peek_end();
 void expect_end();
 Node *new_desg_node(LVar *var, Designator *desg, Node *rhs);
 long eval(Node *node);
+long eval2(Node *node, LVar **var);
+
 TagScope *find_tag(Token *tok) {
   for (TagScope *sc = tag_scope; sc; sc = sc->next) {
     if (strlen(sc->name) == tok->len && !memcmp(tok->str, sc->name, tok->len))
@@ -243,11 +245,19 @@ Type *enum_decl() {
 }
 
 long eval(Node *node) {
+  return eval2(node, NULL);
+}
+
+long eval2(Node *node, LVar **var) {
   switch (node->kind) {
-  case ND_ADD:
-    return eval(node->lhs) + eval(node->rhs);
-  case ND_SUB:
-    return eval(node->lhs) - eval(node->rhs);
+  case ND_ADD: {
+    long lhs = eval2(node->lhs, var);
+    return lhs + eval(node->rhs);
+  }
+  case ND_SUB: {
+    long lhs = eval2(node->lhs,var);
+    return lhs - eval(node->rhs);
+  }
   case ND_MUL:
     return eval(node->lhs) * eval(node->rhs);
   case ND_DIV:
@@ -270,6 +280,16 @@ long eval(Node *node) {
     return eval(node->lhs) || eval(node->rhs);
   case ND_NUM:
     return node->val;
+  case ND_ADDR:
+    if (!var || *var || node->lhs->kind != ND_LVAR)
+      error("初期化エラー (eval2)");
+    *var = node->lhs->var;
+    return 0;
+  case ND_LVAR:
+    if (!var || *var || node->var->ty->kind != TY_ARRAY)
+      error("初期化エラー (eval2 ND_LVAR)");
+    *var = node->var;
+    return 0;
   }
 
   error("evalエラー");
@@ -453,9 +473,10 @@ Initializer *new_init_val(Initializer *cur, int sz, int val) {
   return init;
 }
 
-Initializer *new_init_label(Initializer *cur, char *label) {
+Initializer *new_init_label(Initializer *cur, char *label, long addend) {
   Initializer *init = calloc(1, sizeof(Initializer));
   init->label = label;
+  init->addend = addend;
   cur->next = init;
   return init;
 }
@@ -550,16 +571,11 @@ Initializer *gvar_initializer(Initializer *cur, Type *ty) {
   }
   Node *expr = conditional();
 
-  if (expr->kind == ND_ADDR) {
-    if (expr->lhs->kind != ND_LVAR)
-      error("グローバル変数初期化エラー");
-    return new_init_label(cur, expr->lhs->var->name);
-  }
-
-  if (expr->kind == ND_LVAR && expr->var->ty->kind == TY_ARRAY)
-    return new_init_label(cur, expr->var->name);
-  
-  return new_init_val(cur, size_of(ty), eval(expr));
+  LVar *var = NULL;
+  long addend = eval2(expr, &var);
+  if (var)
+    return new_init_label(cur, var->name, addend);
+  return new_init_val(cur, size_of(ty), addend);
 }
 
 // global-var = basetype ident type-suffix ("=" gvar-initializer)? ";"

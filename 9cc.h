@@ -89,6 +89,7 @@ struct Initializer {
 
   // 他のグローバル変数を参照する
   char *label;
+  long addend;
 };
 
 // ローカル変数

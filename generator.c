@@ -679,7 +679,7 @@ void emit_data() {
     
     for (Initializer *init = var->initializer; init; init = init->next) {
       if (init->label) {
-        printf("  .quad \"%s\"\n", init->label);
+        printf("  .quad \"%s\"%+ld\n", init->label, init->addend);
       } else if (init->contents) {
         printf("  .string \"%s\"\n", init->contents);
       } else if (init->sz == 1) {
