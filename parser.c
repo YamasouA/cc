@@ -435,6 +435,11 @@ Type *read_type_suffix(Type *base) {
 LVarList *read_func_params() {
   if (consume(")"))
     return NULL;
+
+    Token *tok = token;
+    if (consume("void") && consume(")"))
+      return NULL;
+    token = tok;
   
   Type *ty = basetype();
   char *name = NULL;
