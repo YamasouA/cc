@@ -786,6 +786,7 @@ Function *function() {
   // 関数名と型を登録
   LVar *var = push_var(fn->name, func_type(ty), false);
   push_scope(var);
+  fn->is_static = ty->is_static;
   expect("(");
   fn->params = read_func_params();
 

@@ -211,6 +211,7 @@ struct Function {
   Function *next;
   char *name;
   LVarList *params;
+  bool is_static;
   Node *node;
   LVarList *locals;
   int stack_size;

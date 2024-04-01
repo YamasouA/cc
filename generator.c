@@ -629,7 +629,8 @@ void emit_text() {
   printf(".text\n");
   for (Function *fn = code->fns; fn; fn = fn->next) {
     funcname = fn->name;
-    printf(".global %s\n", funcname);
+    if (!fn->is_static)
+      printf(".global %s\n", funcname);
     printf("%s:\n", funcname);
 
     printf("  push rbp\n");
