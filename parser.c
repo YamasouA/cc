@@ -489,6 +489,21 @@ Initializer *emit_struct_padding(Initializer *cur, Type *parent, Member *mem) {
 }
 
 Initializer *gvar_initializer(Initializer *cur, Type *ty) {
+  if (ty->kind == TY_ARRAY && ty->base->kind == TY_CHAR && token->kind == TK_STR) {
+    if (ty->is_incomplete) {
+      ty->array_size = token->len + 1; // \0分
+      ty->is_incomplete = false;
+    }
+
+    int len = (ty->array_size < token->len + 1? ty->array_size : token->len + 1);
+
+    // 配列に文字列を詰める
+    for (int i = 0; i < len; i++) {
+      cur = new_init_val(cur, 1, token->str[i]);
+    }
+    token = token->next;
+    return new_init_zero(cur, ty->array_size - len);
+  }
   if (consume("{")) {
     if (ty->kind == TY_ARRAY) {
       int i = 0;
